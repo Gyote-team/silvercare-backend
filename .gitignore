@@ -1,0 +1,25 @@
+# Maven build output and local runtime data
+target/
+data/
+*.db
+*.mv.db
+*.trace.db
+*.log
+
+# Local secrets (the sample file is committed)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+.classpath
+.project
+.settings/
