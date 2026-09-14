@@ -28,14 +28,20 @@ Python AI Server (별도 레포)
 
 ```text
 {domain}
-├─ api                         Controller, request/response DTO
+├─ api/controller              Controller
+├─ api/dto/request             요청 DTO
+├─ api/dto/response            응답 DTO
+├─ api/mapper                  Query Model → HTTP Response DTO
 ├─ command/application         상태 변경 유스케이스와 트랜잭션
-├─ query/application           읽기 전용 조회와 화면 모델 조립
-└─ domain                      Entity, Enum, Repository, 도메인 정책
+├─ query/application           읽기 전용 조회
+├─ query/model                 API 계층에 의존하지 않는 조회 모델
+├─ domain                      Entity, Enum, Repository, 도메인 정책
+└─ error                       도메인별 ErrorCode
 ```
 
 - **Command**: 생성·수정·삭제·상태 전이와 권한 검사를 담당합니다.
 - **Query**: 상태를 바꾸지 않고 화면에 필요한 데이터를 조립합니다.
+- Query Service는 HTTP Response DTO에 의존하지 않습니다. `query/model`을 반환하고 `api/mapper`가 HTTP 응답으로 변환합니다.
 - Command와 Query는 현재 하나의 PostgreSQL을 공유합니다.
 - 읽기 DB 복제, 이벤트 소싱, Kafka는 현재 도입하지 않습니다.
 
@@ -65,4 +71,3 @@ Python AI Server (별도 레포)
 - `.env`, OAuth·JWT 키, DB 덤프, 실제 의료 정보, 업로드 원본은 Git에 포함하지 않습니다.
 - 이미 적용한 `V1__...sql`은 수정하지 않고, 변경마다 새 migration을 추가합니다.
 - 의료 문서 원본은 DB BLOB가 아닌 Object Storage 키와 메타데이터만 저장합니다.
-

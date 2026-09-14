@@ -1,9 +1,9 @@
 package com.gyote.silvercare.care_relation.query.application;
 
-import com.gyote.silvercare.care_relation.api.response.CareRelationResponse;
 import com.gyote.silvercare.care_relation.domain.CareRelation;
 import com.gyote.silvercare.care_relation.domain.CareRelationStatus;
 import com.gyote.silvercare.care_relation.domain.repository.CareRelationRepository;
+import com.gyote.silvercare.care_relation.query.model.CareRelationView;
 import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
@@ -12,6 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /** Read-only care-relation queries and response assembly. */
 @Service
@@ -32,20 +36,29 @@ public class CareRelationQueryService {
         return userQueries.requireByKakaoId(kakaoId);
     }
 
-    public List<CareRelationResponse> listFor(User me) {
+    public List<CareRelationView> listFor(User me) {
         List<CareRelation> rows = me.getRole() == UserRole.PATIENT
                 ? relations.findByPatientIdOrderByRequestedAtDesc(me.getId())
                 : relations.findByCaregiverIdOrderByRequestedAtDesc(me.getId());
-        return rows.stream().map(row -> toResponse(row, me)).toList();
+        Map<UUID, String> namesById = users.findAllById(counterpartIds(rows, me)).stream()
+                .collect(Collectors.toMap(User::getId, User::getName));
+        return rows.stream().map(row -> toView(row, me, namesById)).toList();
     }
 
-    private CareRelationResponse toResponse(CareRelation row, User me) {
+    private Set<UUID> counterpartIds(List<CareRelation> rows, User me) {
+        boolean patientSide = me.getRole() == UserRole.PATIENT;
+        return rows.stream()
+                .map(row -> patientSide ? row.getCaregiverId() : row.getPatientId())
+                .collect(Collectors.toSet());
+    }
+
+    private CareRelationView toView(CareRelation row, User me, Map<UUID, String> namesById) {
         boolean patientSide = me.getRole() == UserRole.PATIENT;
         var otherId = patientSide ? row.getCaregiverId() : row.getPatientId();
-        String name = users.findById(otherId).map(User::getName).orElse("이용자");
+        String name = namesById.getOrDefault(otherId, "이용자");
         boolean requested = row.getStatus() == CareRelationStatus.REQUESTED;
         boolean active = row.getStatus() == CareRelationStatus.ACTIVE;
-        return new CareRelationResponse(row.getId(), name, statusLabel(row.getStatus()), row.getStatus(),
+        return new CareRelationView(row.getId(), name, statusLabel(row.getStatus()), row.getStatus(),
                 patientSide && requested, patientSide && requested, !patientSide && requested, active);
     }
 

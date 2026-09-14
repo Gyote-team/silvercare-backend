@@ -18,6 +18,12 @@
 
 기능(도메인)을 먼저 나누고, 도메인 내부에서 **상태 변경(Command)** 과 **읽기(Query)** 를 분리하는 점진적 CQRS 구조입니다.
 
+전체 파일·패키지 트리와 책임은 [폴더 구조 문서](docs/project-structure.md)에서 확인할 수 있습니다.
+새 기능의 파일 배치와 예외 처리 기준은 [개발 규약](docs/development-convention.md)을 따릅니다.
+처음 참여하는 팀원을 위한 실행·개발·PR 안내는 [팀 개발 가이드](docs/team-development-guide.md)를 확인하세요.
+회의에서 구조를 설명할 때는 [구조 설명 대본](docs/meeting-script.md)을 참고하세요.
+Notion에 붙여 넣을 상세 팀 운영 문서는 [Notion용 백엔드 가이드](docs/notion-spring-backend-guide.md)를 참고하세요.
+
 ```text
 com.gyote.silvercare
 ├─ global                         # 전 도메인이 공유하는 기술 영역
@@ -27,16 +33,25 @@ com.gyote.silvercare
 │  └─ web                         # 특정 도메인에 속하지 않는 웹 진입점
 │
 ├─ user                           # 회원과 역할
-│  ├─ api                         # Controller, request/response DTO
+│  ├─ api/controller              # HTTP Controller
+│  ├─ api/dto/request             # HTTP 요청 DTO
+│  ├─ api/dto/response            # HTTP 응답 DTO
+│  ├─ api/mapper                  # Query Model → HTTP Response DTO
 │  ├─ command/application         # 계정 생성, 역할 선택
 │  ├─ query/application           # 로그인 사용자, 내 정보 조회
-│  └─ domain/repository           # User Aggregate와 저장소
+│  ├─ domain/repository           # User Entity와 저장소
+│  └─ error                       # UserErrorCode
 │
 └─ care_relation                  # 개인-보호자 연결
-   ├─ api                         # 연결 관리 API
+   ├─ api/controller              # 연결 관리 API
+   ├─ api/dto/request             # 연결 요청 DTO
+   ├─ api/dto/response            # 연결 응답 DTO
+   ├─ api/mapper                  # Query Model → HTTP Response DTO
    ├─ command/application         # 요청·수락·거절·취소·해제
-   ├─ query/application           # 연결 목록·화면 응답 조립
-   └─ domain/repository           # CareRelation Aggregate와 저장소
+   ├─ query/application           # 연결 목록 조회
+   ├─ query/model                 # API에 의존하지 않는 조회 모델
+   ├─ domain/repository           # CareRelation Entity와 저장소
+   └─ error                       # CareRelationErrorCode
 ```
 ---
 
@@ -44,14 +59,20 @@ com.gyote.silvercare
 
 ```text
 {domain}
-├─ api                         HTTP 진입점과 요청/응답 DTO
+├─ api/controller              HTTP 진입점
+├─ api/dto/request             HTTP 요청 DTO
+├─ api/dto/response            HTTP 응답 DTO
+├─ api/mapper                  Query Model을 HTTP 응답 DTO로 변환
 ├─ command/application         생성·수정·삭제·상태 전이, 트랜잭션
-├─ query/application           읽기 전용 조회와 화면 모델 조립
-└─ domain                      Entity, Enum, Repository, 도메인 규칙
+├─ query/application           읽기 전용 조회
+├─ query/model                 API에 의존하지 않는 조회 모델
+├─ domain                      Entity, Enum, Repository, 도메인 규칙
+└─ error                       도메인별 ErrorCode
 ```
 
 - **Command**는 데이터를 바꾸며, 권한 검사와 상태 전이를 처리합니다.
 - **Query**는 데이터를 바꾸지 않고, 화면에 필요한 형태로 읽어 반환합니다.
+- Query는 HTTP DTO가 아닌 `query/model`을 반환하고, `api/mapper`가 HTTP 응답으로 변환합니다.
 - 현재는 Command와 Query가 같은 PostgreSQL을 공유합니다. 읽기 DB 분리·이벤트 소싱·메시지 브로커는 도입하지 않습니다.
 
 ---
@@ -78,6 +99,7 @@ com.gyote.silvercare
 - 카카오 로그인 뒤 세션 쿠키 `SILVERCARE_SESSION`과 JWT 쿠키 `SILVERCARE_TOKEN`을 발급합니다.
 - API는 `Authorization: Bearer` 헤더 또는 JWT 쿠키로 인증합니다.
 - 보호자만 연결 요청을 할 수 있고, 개인만 연결 요청을 수락·거절할 수 있습니다.
+- 도메인 오류는 `ErrorCode → BusinessException → GlobalExceptionHandler`로 동일한 JSON 형식으로 반환합니다.
 
 ---
 
@@ -109,3 +131,5 @@ docker compose up -d
 ```powershell
 .\mvnw.cmd clean test
 ```
+
+현재 테스트는 사용자·보호자 연결·보안 설정·공통 예외 응답을 포함합니다.

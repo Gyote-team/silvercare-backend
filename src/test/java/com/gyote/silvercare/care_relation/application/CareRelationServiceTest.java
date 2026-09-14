@@ -9,6 +9,7 @@ import com.gyote.silvercare.user.command.application.UserAccountService;
 import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
+import com.gyote.silvercare.global.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -43,7 +44,7 @@ class CareRelationServiceTest {
         assertThat(created.getStatus()).isEqualTo(CareRelationStatus.REQUESTED);
         assertThat(created.getPatientId()).isEqualTo(patient.getId());
         assertThatThrownBy(() -> cares.request(caregiver, patient.getInviteCode()))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
@@ -64,7 +65,7 @@ class CareRelationServiceTest {
 
         assertThat(accepted.getStatus()).isEqualTo(CareRelationStatus.ACTIVE);
         assertThatThrownBy(() -> cares.accept(caregiver, requested.getId()))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
@@ -77,9 +78,9 @@ class CareRelationServiceTest {
         );
 
         assertThatThrownBy(() -> cares.request(caregiver, "AAAAAA"))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessException.class);
         assertThatThrownBy(() -> cares.request(caregiver, caregiver.getInviteCode()))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
@@ -101,6 +102,6 @@ class CareRelationServiceTest {
 
         assertThat(revoked.getStatus()).isEqualTo(CareRelationStatus.REVOKED);
         assertThatThrownBy(() -> cares.revoke(caregiver, requested.getId()))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(BusinessException.class);
     }
 }
