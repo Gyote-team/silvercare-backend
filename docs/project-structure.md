@@ -31,7 +31,6 @@ backend/
 │  │  │  │  ├─ query/model/                   # API에 의존하지 않는 조회 모델
 │  │  │  │  ├─ domain/                        # CareRelation Entity, 상태, Repository
 │  │  │  │  └─ error/                         # 도메인별 오류 코드
-│  │  │  ├─ consent/                          # 보호자 열람 동의 (구조 준비)
 │  │  │  ├─ health_record/                    # 건강기록 (구조 준비)
 │  │  │  ├─ visit/                            # 병원 방문 (구조 준비)
 │  │  │  ├─ medical_document/                 # 의료 문서·업로드 메타데이터 (구조 준비)
@@ -76,4 +75,4 @@ backend/
 
 ## 🤖 AI 서버와의 경계
 
-OCR, STT, LLM, RAG는 이 저장소에 포함하지 않습니다. Spring 백엔드는 사용자·권한·동의·파일 메타데이터와 AI 서버 연동 규약을 담당하며, 실제 AI 처리는 별도 Python 저장소에서 관리합니다.
+OCR, STT, LLM, RAG는 이 저장소에 포함하지 않습니다. Spring 백엔드는 사용자·개인-보호자 연결 권한·파일 메타데이터와 AI 서버 연동 규약을 담당하며, 실제 AI 처리는 별도 Python 저장소에서 관리합니다. 보호자 열람은 `care_relation`이 `ACTIVE`인 경우에만 허용하며, 별도 `consent` 패키지는 두지 않습니다.

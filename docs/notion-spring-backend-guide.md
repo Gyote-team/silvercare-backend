@@ -9,7 +9,7 @@
 
 ## 1. 이 문서의 목적
 
-`silvercare-backend`는 사용자 인증, 권한, 동의, 건강 데이터, 일정과 AI 연동 경계를 담당하는 Spring Boot 저장소입니다.
+`silvercare-backend`는 사용자 인증, 개인-보호자 연결 권한, 건강 데이터, 일정과 AI 연동 경계를 담당하는 Spring Boot 저장소입니다.
 
 이 문서는 팀원이 다음 내용을 같은 기준으로 이해하도록 돕습니다.
 
@@ -34,7 +34,7 @@
         ▼
 [Spring Boot]
   ├─ 카카오 로그인 · JWT · 권한
-  ├─ 사용자 · 보호자 연결 · 열람 동의
+  ├─ 사용자 · 보호자 연결
   ├─ 건강기록 · 방문 · 문서 · 일정 데이터 관리
   ├─ PostgreSQL · Flyway migration
   └─ AI 요청 전 권한 확인 및 허용 식별자 전달
@@ -72,7 +72,6 @@ src/main/java/com/gyote/silvercare/
 │
 ├─ user/                    # 회원·역할
 ├─ care_relation/           # 개인-보호자 연결
-├─ consent/                 # 보호자 열람 동의
 ├─ health_record/           # 건강기록
 ├─ visit/                   # 병원 방문
 ├─ medical_document/        # 의료 문서 메타데이터·업로드
@@ -147,7 +146,7 @@ Query Service → Query Model → API Mapper → Response DTO
 
 - 생성·수정·삭제·상태 전이를 처리합니다.
 - `@Transactional`을 사용합니다.
-- 예: 역할 선택, 보호자 연결 요청·수락·거절, 동의 철회
+- 예: 역할 선택, 보호자 연결 요청·수락·거절·해제
 
 ### `query/application`
 
@@ -223,10 +222,12 @@ throw new BusinessException(UserErrorCode.USER_NOT_FOUND);
 ### Spring 담당
 
 - 사용자 인증·권한
-- 개인-보호자 연결과 열람 동의
+- 개인-보호자 연결과 `ACTIVE` 상태 기반 열람 권한
 - AI 요청 대상 데이터의 접근 가능 여부 판단
 - 문서·음성 원본의 메타데이터와 저장 위치 관리
 - AI 처리 요청의 식별자 전달과 결과 공개 전 재검증
+
+보호자 열람은 개별 문서·기능별 동의를 별도로 받지 않습니다. 개인 본인은 자신의 데이터를 열람하고, 보호자는 대상 개인과의 연결이 `ACTIVE`일 때 해당 개인의 전체 문서·정보를 열람합니다. 연결이 `REQUESTED`, `REJECTED`, `CANCELED`, `REVOKED`이면 열람할 수 없습니다. 쓰기 권한은 각 기능의 유스케이스 규칙으로 따로 제한합니다.
 
 ### Python 담당
 
@@ -286,7 +287,7 @@ feat/health-record → develop → main
 
 ### 구조 준비됨
 
-- 동의, 건강기록, 병원 방문, 의료 문서
+- 건강기록, 병원 방문, 의료 문서
 - 할 일 후보, 일정·복약 알림, 타임라인, 음성 녹음
 
 ### 별도 저장소

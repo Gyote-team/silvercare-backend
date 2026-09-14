@@ -14,7 +14,7 @@ Next.js Web / WebView
         │ HTTPS
         ▼
 Spring Boot
-  ├─ 인증 · 권한 · 동의 · 도메인 API
+  ├─ 인증 · 개인-보호자 연결 권한 · 도메인 API
   ├─ PostgreSQL + pgvector     업무 데이터 · 벡터
   └─ Object Storage            의료 서류 원본
 
@@ -22,7 +22,7 @@ Python AI Server (별도 레포)
   └─ OCR · STT · 정보 추출 · RAG · 근거 검증 · LLM
 ```
 
-브라우저는 Python AI 서버를 직접 호출하지 않습니다. 추후 AI 연동 시 Spring이 인증·연결·동의를 검증하고 허용된 식별자만 전달합니다.
+브라우저는 Python AI 서버를 직접 호출하지 않습니다. 추후 AI 연동 시 Spring이 인증과 개인-보호자 `ACTIVE` 연결을 검증하고 허용된 식별자만 전달합니다.
 
 ## 🧩 CQRS 규칙
 
@@ -55,15 +55,22 @@ Python AI Server (별도 레포)
 ### 구현됨
 
 - `user`: 카카오 로그인 사용자와 역할
-- `care_relation`: 개인-보호자 연결 요청과 상태 전이
+- `care_relation`: 개인-보호자 연결 요청과 상태 전이. 보호자 열람은 `ACTIVE` 연결을 기준으로 합니다.
 - `global`: 인증·보안·설정·예외 처리
 
 ### 패키지 뼈대만 준비됨
 
-- `consent`, `health_record`, `visit`, `medical_document`
+- `health_record`, `visit`, `medical_document`
 - `action_item`, `schedule`, `timeline`, `voice_recording`
 
 음성 녹음은 서비스 범위에 포함됩니다. Spring은 파일·권한·메타데이터를 관리하고, STT 변환은 별도 Python AI 서버가 맡습니다.
+
+### 보호자 열람 기준
+
+- 개인은 자신의 데이터에 접근할 수 있습니다.
+- 보호자는 대상 개인과의 `care_relation.status == ACTIVE`일 때만 해당 개인의 전체 문서·정보를 열람할 수 있습니다.
+- `REQUESTED`, `REJECTED`, `CANCELED`, `REVOKED` 관계는 열람 권한을 부여하지 않습니다.
+- 기능별 열람 동의나 `consent` 도메인은 사용하지 않습니다. 쓰기 권한은 각 기능의 별도 규칙으로 판단합니다.
 
 ## 🗄️ 데이터와 Git 원칙
 

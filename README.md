@@ -9,7 +9,7 @@
 ## 🧭 빠른 안내
 
 - **현재 구현됨**: 카카오 로그인, JWT/세션 인증, 최초 역할 선택, 개인-보호자 연결 관리
-- **구조만 준비됨**: 동의, 건강기록, 방문, 문서, 할 일·일정·복약 알림, 타임라인, 음성 녹음
+- **구조만 준비됨**: 건강기록, 방문, 문서, 할 일·일정·복약 알림, 타임라인, 음성 녹음
 - **별도 레포**: OCR, STT, LLM, RAG 등 Python AI 서버
 
 ---
@@ -81,7 +81,6 @@ com.gyote.silvercare
 
 구현 예정 패키지는 `package-info.java`로 책임을 기록해 두었습니다. 실제 개발을 시작하면 해당 도메인 안에 DTO·Repository·Entity를 추가합니다.
 
-- `consent` — 보호자 열람 동의
 - `health_record` — 건강기록
 - `visit` — 병원 방문
 - `medical_document` — 의료 문서 메타데이터와 업로드
@@ -90,7 +89,7 @@ com.gyote.silvercare
 - `timeline` — 여러 도메인을 한 화면으로 조립하는 조회 전용 모델
 - `voice_recording` — 건강기록 음성·진료실 녹음의 업로드와 메타데이터
 
-> 🤖 `integration/ai`, `chat`, `comparison` 같은 AI 처리 패키지는 의도적으로 없습니다. Spring은 인증·권한·동의·업로드 메타데이터를 맡고, OCR·STT·LLM 처리는 별도 Python AI 서버가 맡습니다.
+> 🤖 `integration/ai`, `chat`, `comparison` 같은 AI 처리 패키지는 의도적으로 없습니다. Spring은 인증·개인-보호자 연결 권한·업로드 메타데이터를 맡고, OCR·STT·LLM 처리는 별도 Python AI 서버가 맡습니다.
 
 ---
 
@@ -99,6 +98,8 @@ com.gyote.silvercare
 - 카카오 로그인 뒤 세션 쿠키 `SILVERCARE_SESSION`과 JWT 쿠키 `SILVERCARE_TOKEN`을 발급합니다.
 - API는 `Authorization: Bearer` 헤더 또는 JWT 쿠키로 인증합니다.
 - 보호자만 연결 요청을 할 수 있고, 개인만 연결 요청을 수락·거절할 수 있습니다.
+- 개인 본인은 자신의 데이터를 열람할 수 있습니다. 보호자는 해당 개인과의 연결이 `ACTIVE`일 때만 그 개인의 전체 문서·정보를 열람할 수 있습니다.
+- `REJECTED`, `CANCELED`, `REVOKED` 상태에서는 보호자 열람을 허용하지 않습니다. 열람 동의 도메인은 별도로 두지 않습니다.
 - 도메인 오류는 `ErrorCode → BusinessException → GlobalExceptionHandler`로 동일한 JSON 형식으로 반환합니다.
 
 ---

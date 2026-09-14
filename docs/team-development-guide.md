@@ -73,7 +73,16 @@ throw new BusinessException(HealthRecordErrorCode.RECORD_NOT_FOUND);
 
 공통 오류는 `global/exception`, 도메인 규칙 오류는 `{domain}/error`에 둡니다.
 
-## 5. PR 절차
+## 5. 보호자 열람 권한
+
+- 개인은 자신의 건강기록·방문·문서 데이터를 열람할 수 있습니다.
+- 보호자는 대상 개인과의 `care_relation`이 `ACTIVE`일 때만 그 개인의 전체 문서·정보를 열람할 수 있습니다.
+- 연결이 `REQUESTED`, `REJECTED`, `CANCELED`, `REVOKED`이면 보호자 열람은 허용하지 않습니다.
+- 기능별 열람 동의는 만들지 않습니다. 쓰기·수정 권한은 각 도메인의 유스케이스 규칙으로 별도 제한합니다.
+
+새 도메인의 조회 API를 만들 때는 개인 본인인지, 또는 보호자라면 `ACTIVE` 연결인지 먼저 검사합니다.
+
+## 6. PR 절차
 
 ```powershell
 git add .
@@ -83,7 +92,7 @@ git push -u origin feat/health-record
 
 GitHub에서 `feat/health-record` → `develop` PR을 만들고, 최소 한 명의 승인 후 병합합니다. 새 커밋을 올렸다면 최신 변경을 다시 검토받습니다.
 
-## 6. 기능 완료 확인
+## 7. 기능 완료 확인
 
 ```powershell
 .\mvnw.cmd test
