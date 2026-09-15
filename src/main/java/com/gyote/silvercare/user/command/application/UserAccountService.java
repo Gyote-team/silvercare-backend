@@ -4,6 +4,8 @@ import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.UserStatus;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
+import com.gyote.silvercare.global.exception.BusinessException;
+import com.gyote.silvercare.user.error.UserErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +26,7 @@ public class UserAccountService {
     @Transactional
     public User loginOrRegister(String kakaoId, String nickname) {
         if (kakaoId == null || kakaoId.isBlank()) {
-            throw new IllegalArgumentException("kakao_id가 없습니다");
+            throw new BusinessException(UserErrorCode.KAKAO_ID_REQUIRED);
         }
         String name = (nickname == null || nickname.isBlank()) ? "이용자" : nickname.trim();
         return users.findByKakaoId(kakaoId).map(existing -> {
@@ -43,12 +45,12 @@ public class UserAccountService {
     @Transactional
     public User chooseRole(String kakaoId, UserRole role) {
         if (role != UserRole.PATIENT && role != UserRole.CAREGIVER) {
-            throw new IllegalArgumentException("역할은 개인 또는 보호자만 고를 수 있습니다");
+            throw new BusinessException(UserErrorCode.INVALID_ROLE);
         }
         User user = users.findByKakaoId(kakaoId)
-                .orElseThrow(() -> new IllegalArgumentException("카카오 계정이 없습니다"));
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
         if (user.getRole() != UserRole.PENDING) {
-            throw new IllegalStateException("역할은 한 번만 고를 수 있습니다");
+            throw new BusinessException(UserErrorCode.ROLE_ALREADY_SELECTED);
         }
         user.setRole(role);
         if (role == UserRole.PATIENT) {
@@ -80,13 +82,13 @@ public class UserAccountService {
                 return candidate;
             }
         }
-        throw new IllegalStateException("초대 코드를 만들 수 없습니다");
+        throw new BusinessException(UserErrorCode.INVITE_CODE_GENERATION_FAILED);
     }
 
     @Transactional
     public User ensureDemoUser(UserRole role) {
         if (role != UserRole.PATIENT && role != UserRole.CAREGIVER) {
-            throw new IllegalArgumentException("역할은 개인 또는 보호자만 고를 수 있습니다");
+            throw new BusinessException(UserErrorCode.INVALID_ROLE);
         }
         String kakaoId = role == UserRole.CAREGIVER ? "demo-caregiver" : "demo-patient";
         String name = role == UserRole.CAREGIVER ? "김민지" : "김순자";

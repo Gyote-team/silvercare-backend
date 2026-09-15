@@ -3,6 +3,8 @@ package com.gyote.silvercare.user.query.application;
 import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
+import com.gyote.silvercare.global.exception.BusinessException;
+import com.gyote.silvercare.user.error.UserErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +30,7 @@ public class UserQueryService {
 
     public User requireByKakaoId(String kakaoId) {
         return findByKakaoId(kakaoId)
-                .orElseThrow(() -> new IllegalArgumentException("카카오 계정이 없습니다"));
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
     }
 
     public boolean needsRole(String kakaoId) {
