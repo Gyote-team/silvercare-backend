@@ -32,7 +32,7 @@ src/main/java/com/gyote/silvercare/
 └─ infrastructure/         # 외부 시스템 구현체가 필요할 때만 생성
 ```
 
-`user`, `care_relation`은 실제 구현이 있으며, 나머지 도메인의 빈 패키지는 기능을 시작할 공통 위치입니다. 빈 패키지를 임의로 삭제하거나 별도 최상위 Controller·Service·Repository 폴더를 만들지 않습니다.
+`user`, `care_relation`은 실제 구현이 있으며, 나머지 도메인도 위 구조 전체를 `package-info.java`로 미리 유지합니다. 아직 코드가 없는 계층도 기능을 시작할 공통 위치이므로 빈 패키지를 임의로 삭제하거나 별도 최상위 Controller·Service·Repository 폴더를 만들지 않습니다.
 
 ## Command와 Query
 
