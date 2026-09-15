@@ -27,7 +27,8 @@ src/main/java/com/gyote/silvercare/
 ├─ command/application/    # 상태 변경 유스케이스
 ├─ query/application/      # 읽기 전용 유스케이스
 ├─ query/model/            # API에 의존하지 않는 조회 모델
-├─ domain/                 # Entity, Enum, Repository, 도메인 규칙
+├─ domain/                 # Entity, Enum, 도메인 규칙
+│  └─ repository/          # 도메인 Repository 인터페이스
 ├─ error/                  # 도메인별 ErrorCode
 └─ infrastructure/         # 외부 시스템 구현체가 필요할 때만 생성
 ```
@@ -45,7 +46,7 @@ src/main/java/com/gyote/silvercare/
 
 ## 새 기능 구현 순서
 
-1. `{domain}/domain`에 Entity·Enum·Repository·도메인 규칙을 둡니다.
+1. `{domain}/domain`에 Entity·Enum·도메인 규칙을, `{domain}/domain/repository`에 Repository 인터페이스를 둡니다.
 2. DB 변경은 `src/main/resources/db/migration/V{번호}__{설명}.sql`로 추가합니다.
 3. 상태 변경은 Command Service, 조회는 Query Service에 구현합니다.
 4. HTTP Controller·DTO는 `api` 아래에 두고, 조회 모델 변환은 `api/mapper`에서 처리합니다.
