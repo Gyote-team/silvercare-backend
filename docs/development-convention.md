@@ -1,6 +1,38 @@
 # 🧭 백엔드 개발 규약
 
-이 문서는 **코드를 어떻게 작성할지**에 대한 기준입니다. 패키지의 전체 위치는 [프로젝트 구조](project-structure.md)를 확인합니다.
+이 문서는 **패키지 구조와 코드 작성 방식의 단일 기준**입니다.
+
+## 패키지 구조와 파일 배치
+
+```text
+src/main/java/com/gyote/silvercare/
+├─ global/                           # 인증·설정·공통 예외·공통 웹 진입점
+├─ user/                             # 회원·역할
+├─ care_relation/                    # 개인-보호자 연결
+├─ health_record/                    # 건강기록 (구조 준비)
+├─ visit/                            # 병원 방문 (구조 준비)
+├─ medical_document/                 # 의료 문서·업로드 메타데이터 (구조 준비)
+├─ action_item/                      # 할 일 후보 승인·거절 (구조 준비)
+├─ schedule/                         # 일정·복약 알림 (구조 준비)
+├─ timeline/                         # 통합 타임라인 조회 (구조 준비)
+└─ voice_recording/                  # 건강기록·진료실 녹음 메타데이터 (구조 준비)
+```
+
+```text
+{domain}/
+├─ api/controller/         # HTTP Controller
+├─ api/dto/request/        # HTTP 요청 DTO
+├─ api/dto/response/       # HTTP 응답 DTO
+├─ api/mapper/             # Query Model → HTTP Response DTO
+├─ command/application/    # 상태 변경 유스케이스
+├─ query/application/      # 읽기 전용 유스케이스
+├─ query/model/            # API에 의존하지 않는 조회 모델
+├─ domain/                 # Entity, Enum, Repository, 도메인 규칙
+├─ error/                  # 도메인별 ErrorCode
+└─ infrastructure/         # 외부 시스템 구현체가 필요할 때만 생성
+```
+
+`user`, `care_relation`은 실제 구현이 있으며, 나머지 도메인의 빈 패키지는 기능을 시작할 공통 위치입니다. 빈 패키지를 임의로 삭제하거나 별도 최상위 Controller·Service·Repository 폴더를 만들지 않습니다.
 
 ## Command와 Query
 

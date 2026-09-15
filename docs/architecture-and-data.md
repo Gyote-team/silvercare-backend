@@ -1,6 +1,6 @@
 # 🏛️ SilverCare AI · 아키텍처와 데이터 운영
 
-이 문서는 **시스템 경계와 데이터 원칙**을 관리합니다. 코드 파일 위치와 구현 규칙은 각각 [프로젝트 구조](project-structure.md), [개발 규약](development-convention.md)을 따릅니다.
+이 문서는 **시스템 경계와 데이터 원칙**을 관리합니다. 코드 파일 위치와 구현 규칙은 [개발 규약](development-convention.md)을 따릅니다.
 
 ## 핵심 결정
 

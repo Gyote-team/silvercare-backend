@@ -15,8 +15,7 @@
 문서마다 한 가지 기준만 관리합니다.
 
 - [아키텍처와 데이터 운영](docs/architecture-and-data.md): Spring·Python 경계, CQRS 적용 범위, 데이터·권한 원칙
-- [프로젝트 구조](docs/project-structure.md): 실제 폴더·패키지 트리와 파일 위치
-- [개발 규약](docs/development-convention.md): Command·Query, 예외 처리, DB 변경 규칙
+- [개발 규약](docs/development-convention.md): 패키지 구조·파일 배치, Command·Query, 예외 처리, DB 변경 규칙
 - [팀 개발 가이드](docs/team-development-guide.md): 실행, 브랜치, PR, 테스트 절차
 
 ## 권한 원칙

@@ -1,6 +1,6 @@
 # 👋 SilverCare 백엔드 팀 개발 가이드
 
-이 문서는 **로컬 실행과 협업 절차**만 다룹니다. 코드 배치는 [프로젝트 구조](project-structure.md), 구현 규칙은 [개발 규약](development-convention.md)을 따릅니다.
+이 문서는 **로컬 실행과 협업 절차**만 다룹니다. 코드 배치와 구현 규칙은 [개발 규약](development-convention.md)을 따릅니다.
 
 ## 시작 전
 
