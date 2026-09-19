@@ -7,6 +7,8 @@ import com.gyote.silvercare.care_relation.domain.repository.CareRelationReposito
 import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
+import com.gyote.silvercare.care_relation.error.CareRelationErrorCode;
+import com.gyote.silvercare.global.exception.BusinessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,17 +35,17 @@ public class CareRelationCommandService {
     @Transactional
     public CareRelation request(User caregiver, String rawCode) {
         if (caregiver.getRole() != UserRole.CAREGIVER) {
-            throw new IllegalStateException("보호자만 연결을 요청할 수 있습니다");
+            throw new BusinessException(CareRelationErrorCode.CAREGIVER_ONLY);
         }
         User patient = users.findByInviteCode(CareRelationCode.normalize(rawCode))
                 .filter(found -> found.getRole() == UserRole.PATIENT)
-                .orElseThrow(() -> new IllegalArgumentException("없는 코드입니다"));
+                .orElseThrow(() -> new BusinessException(CareRelationErrorCode.INVITE_CODE_NOT_FOUND));
         if (patient.getId().equals(caregiver.getId())) {
-            throw new IllegalArgumentException("자기 자신과는 연결할 수 없습니다");
+            throw new BusinessException(CareRelationErrorCode.SELF_RELATION_NOT_ALLOWED);
         }
         if (relations.findFirstByPatientIdAndCaregiverIdAndStatusIn(
                 patient.getId(), caregiver.getId(), ALIVE).isPresent()) {
-            throw new IllegalStateException("이미 요청했거나 연결되어 있습니다");
+            throw new BusinessException(CareRelationErrorCode.RELATION_ALREADY_EXISTS);
         }
         CareRelation created = new CareRelation();
         created.setPatientId(patient.getId());
@@ -56,7 +58,7 @@ public class CareRelationCommandService {
     public CareRelation accept(User patient, UUID relationId) {
         CareRelation relation = requireOwned(patient, relationId, true);
         if (relation.getStatus() != CareRelationStatus.REQUESTED) {
-            throw new IllegalStateException("대기 중인 요청만 수락할 수 있습니다");
+            throw new BusinessException(CareRelationErrorCode.INVALID_RELATION_STATE);
         }
         relation.setStatus(CareRelationStatus.ACTIVE);
         relation.setAcceptedAt(Instant.now());
@@ -67,7 +69,7 @@ public class CareRelationCommandService {
     public CareRelation reject(User patient, UUID relationId) {
         CareRelation relation = requireOwned(patient, relationId, true);
         if (relation.getStatus() != CareRelationStatus.REQUESTED) {
-            throw new IllegalStateException("대기 중인 요청만 거절할 수 있습니다");
+            throw new BusinessException(CareRelationErrorCode.INVALID_RELATION_STATE);
         }
         relation.setStatus(CareRelationStatus.REJECTED);
         relation.setEndedAt(Instant.now());
@@ -78,7 +80,7 @@ public class CareRelationCommandService {
     public CareRelation cancel(User caregiver, UUID relationId) {
         CareRelation relation = requireOwned(caregiver, relationId, false);
         if (relation.getStatus() != CareRelationStatus.REQUESTED) {
-            throw new IllegalStateException("대기 중인 요청만 취소할 수 있습니다");
+            throw new BusinessException(CareRelationErrorCode.INVALID_RELATION_STATE);
         }
         relation.setStatus(CareRelationStatus.CANCELED);
         relation.setEndedAt(Instant.now());
@@ -88,13 +90,13 @@ public class CareRelationCommandService {
     @Transactional
     public CareRelation revoke(User actor, UUID relationId) {
         CareRelation relation = relations.findById(relationId)
-                .orElseThrow(() -> new IllegalArgumentException("연결을 찾을 수 없습니다"));
+                .orElseThrow(() -> new BusinessException(CareRelationErrorCode.RELATION_NOT_FOUND));
         boolean mine = actor.getId().equals(relation.getPatientId()) || actor.getId().equals(relation.getCaregiverId());
         if (!mine) {
-            throw new IllegalStateException("이 연결을 처리할 수 없습니다");
+            throw new BusinessException(CareRelationErrorCode.RELATION_ACCESS_DENIED);
         }
         if (relation.getStatus() != CareRelationStatus.ACTIVE) {
-            throw new IllegalStateException("연결된 관계만 끊을 수 있습니다");
+            throw new BusinessException(CareRelationErrorCode.INVALID_RELATION_STATE);
         }
         relation.setStatus(CareRelationStatus.REVOKED);
         relation.setEndedAt(Instant.now());
@@ -103,16 +105,16 @@ public class CareRelationCommandService {
 
     private CareRelation requireOwned(User actor, UUID relationId, boolean asPatient) {
         CareRelation relation = relations.findById(relationId)
-                .orElseThrow(() -> new IllegalArgumentException("연결을 찾을 수 없습니다"));
+                .orElseThrow(() -> new BusinessException(CareRelationErrorCode.RELATION_NOT_FOUND));
         UUID expected = asPatient ? relation.getPatientId() : relation.getCaregiverId();
         if (!expected.equals(actor.getId())) {
-            throw new IllegalStateException("이 연결을 처리할 수 없습니다");
+            throw new BusinessException(CareRelationErrorCode.RELATION_ACCESS_DENIED);
         }
         if (asPatient && actor.getRole() != UserRole.PATIENT) {
-            throw new IllegalStateException("본인만 수락하거나 거절할 수 있습니다");
+            throw new BusinessException(CareRelationErrorCode.RELATION_ACCESS_DENIED);
         }
         if (!asPatient && actor.getRole() != UserRole.CAREGIVER) {
-            throw new IllegalStateException("보호자만 요청을 취소할 수 있습니다");
+            throw new BusinessException(CareRelationErrorCode.RELATION_ACCESS_DENIED);
         }
         return relation;
     }

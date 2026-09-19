@@ -4,6 +4,7 @@ import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.UserStatus;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
+import com.gyote.silvercare.global.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -56,7 +57,7 @@ class UserAccountServiceTest {
         assertThat(chosen.getInviteCode()).isNotBlank();
         assertThat(chosen.getInviteCode()).hasSize(6);
         assertThatThrownBy(() -> accounts.chooseRole("kakao-soonja", UserRole.CAREGIVER))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
@@ -64,7 +65,7 @@ class UserAccountServiceTest {
         UserAccountService accounts = new UserAccountService(users);
 
         assertThatThrownBy(() -> accounts.loginOrRegister("  ", "민지"))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
