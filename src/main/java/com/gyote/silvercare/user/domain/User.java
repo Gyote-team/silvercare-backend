@@ -40,9 +40,6 @@ public class User {
     @Column(name = "kakao_id", unique = true, length = 255)
     private String kakaoId;
 
-    @Column(name = "invite_code", unique = true, length = 16)
-    private String inviteCode;
-
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -124,14 +121,6 @@ public class User {
 
     public void setKakaoId(String kakaoId) {
         this.kakaoId = kakaoId;
-    }
-
-    public String getInviteCode() {
-        return inviteCode;
-    }
-
-    public void setInviteCode(String inviteCode) {
-        this.inviteCode = inviteCode;
     }
 
     public Instant getCreatedAt() {

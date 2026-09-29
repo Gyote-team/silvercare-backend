@@ -4,6 +4,7 @@ import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.UserStatus;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
+import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.global.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,9 +19,12 @@ class UserAccountServiceTest {
     @Autowired
     private UserRepository users;
 
+    @Autowired
+    private PatientRepository patients;
+
     @Test
     void firstLoginCreatesAccountWithoutRoleEmailOrPassword() {
-        UserAccountService accounts = new UserAccountService(users);
+        UserAccountService accounts = new UserAccountService(users, patients);
 
         User created = accounts.loginOrRegister("kakao-soonja", "김순자");
 
@@ -36,7 +40,7 @@ class UserAccountServiceTest {
 
     @Test
     void secondLoginKeepsOneRowAndUpdatesName() {
-        UserAccountService accounts = new UserAccountService(users);
+        UserAccountService accounts = new UserAccountService(users, patients);
         accounts.loginOrRegister("kakao-minji", "민지");
 
         User again = accounts.loginOrRegister("kakao-minji", "김민지");
@@ -48,21 +52,21 @@ class UserAccountServiceTest {
 
     @Test
     void chooseRoleOnceAsPatient() {
-        UserAccountService accounts = new UserAccountService(users);
+        UserAccountService accounts = new UserAccountService(users, patients);
         accounts.loginOrRegister("kakao-soonja", "김순자");
 
         User chosen = accounts.chooseRole("kakao-soonja", UserRole.PATIENT);
 
         assertThat(chosen.getRole()).isEqualTo(UserRole.PATIENT);
-        assertThat(chosen.getInviteCode()).isNotBlank();
-        assertThat(chosen.getInviteCode()).hasSize(6);
+        assertThat(accounts.patientInviteCode(chosen)).isNotBlank();
+        assertThat(accounts.patientInviteCode(chosen)).hasSize(6);
         assertThatThrownBy(() -> accounts.chooseRole("kakao-soonja", UserRole.CAREGIVER))
                 .isInstanceOf(BusinessException.class);
     }
 
     @Test
     void blankKakaoIdIsRejected() {
-        UserAccountService accounts = new UserAccountService(users);
+        UserAccountService accounts = new UserAccountService(users, patients);
 
         assertThatThrownBy(() -> accounts.loginOrRegister("  ", "민지"))
                 .isInstanceOf(BusinessException.class);
@@ -70,7 +74,7 @@ class UserAccountServiceTest {
 
     @Test
     void demoCaregiverIsCreatedOnce() {
-        UserAccountService accounts = new UserAccountService(users);
+        UserAccountService accounts = new UserAccountService(users, patients);
 
         User first = accounts.ensureDemoUser(UserRole.CAREGIVER);
         User again = accounts.ensureDemoUser(UserRole.CAREGIVER);
