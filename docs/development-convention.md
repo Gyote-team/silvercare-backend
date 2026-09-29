@@ -18,6 +18,52 @@ src/main/java/com/gyote/silvercare/
 └─ voice_recording/                  # 건강기록·진료실 녹음 메타데이터 (구조 준비)
 ```
 
+## 파일명·클래스명 명명 규칙
+
+파일명과 public 클래스명은 동일하게 유지하고, 여러 단어는 PascalCase로 작성합니다. 클래스 역할을 이름에 포함해 파일의 책임을 바로 알 수 있도록 합니다.
+
+### 공통 규칙
+
+- 도메인명과 기능명은 PascalCase로 작성합니다. 예: `AiDocument`, `CareRelation`
+- 파일명은 클래스명과 동일하게 작성합니다. 예: `AiDocumentQueryService.java` 안의 클래스명은 `AiDocumentQueryService`
+- 약어도 기존 프로젝트 표기인 `Ai`, `Dto`, `Id`, `Api`를 사용합니다. `AI`, `DTO`, `ID`, `API`처럼 전부 대문자로 쓰지 않습니다.
+- 엔티티 파일은 `domain/entity` 폴더에 모아 두며, 클래스명 뒤에 일괄적으로 `Entity`를 붙이지 않습니다. 예: `MedicalDocument`, `AiExplanation`
+- enum은 의미를 나타내는 도메인명 뒤에 `Status`, `Type`, `Role` 등 역할을 붙입니다. 예: `DocumentStatus`, `DocumentType`
+
+### 계층별 suffix 규칙
+
+| 계층 | 파일명 규칙 | 예시 |
+|---|---|---|
+| Controller | `{기능}Controller` 또는 `{기능}ApiController` | `AiDocumentQueryController`, `CareRelationApiController` |
+| Request DTO | `{기능}RequestDto` | `AiDocumentListRequestDto` |
+| Response DTO | `{기능}ResponseDto` | `AiDocumentDetailResponseDto` |
+| Query Service | `{기능}QueryService` | `AiDocumentQueryService` |
+| Command Service | `{기능}CommandService` | `AiDocumentCommandService` |
+| Permission Service | `{기능}PermissionService` | `CareRelationPermissionService` |
+| Mapper | `{기능}ResponseMapper` | `AiDocumentResponseMapper` |
+| Query Model - 조회 행 | `{기능}Row` | `AiDocumentListRow` |
+| Query Model - 조회 결과 | `{기능}View` | `AiDocumentDetailView` |
+| Repository | `{기능}Repository` | `AiDocumentRepository` |
+| Entity | 기능을 나타내는 명사 | `MedicalDocument`, `DocumentAnalysis` |
+| Error Code | `{도메인}ErrorCode` | `AiDocumentErrorCode` |
+
+### DTO 작성 규칙
+
+- HTTP 입력 DTO는 `api/dto/request`에 `{기능}RequestDto`로 작성합니다.
+- HTTP 출력 DTO는 `api/dto/response`에 `{기능}ResponseDto`로 작성합니다.
+- DTO는 HTTP 계약을 표현하고, Entity를 직접 응답 타입으로 사용하지 않습니다.
+- 조회 Service는 Response DTO가 아닌 `query/model`의 `Row` 또는 `View`를 반환하고, `api/mapper`의 Mapper가 Response DTO로 변환합니다.
+- DTO 필드명은 lowerCamelCase를 사용합니다.
+
+### 메서드명 규칙
+
+- 조회: `find...`, `get...`, `require...`
+- 생성: `create...`, `register...`
+- 수정: `update...`, `change...`
+- 삭제: `delete...`, `remove...`
+- 권한 확인: `can...`, `has...`, `require...`
+- 각 public 메서드 위에는 메서드의 목적과 반환 결과를 설명하는 한국어 주석을 작성합니다.
+
 ```text
 {domain}/
 ├─ api/controller/         # HTTP Controller
