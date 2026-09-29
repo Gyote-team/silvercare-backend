@@ -17,34 +17,38 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * 의료 문서 메타데이터입니다. 원본 파일은 Object Storage에 두고 objectKey만 저장합니다.
- * 테이블은 Flyway migration(create_medical_documents)으로 생성하며, 컬럼은 migration과 일치해야 합니다.
+ * 의료 문서 메타데이터입니다. 원본 파일은 Object Storage에 두고 storage key만 저장합니다.
+ * 테이블은 V2의 documents와 add_document_patient_and_status_fields migration으로 만들며, 컬럼은 migration과 일치해야 합니다.
  */
 @Entity
-@Table(name = "medical_documents")
+@Table(name = "documents")
 public class MedicalDocument {
 
     @Id
     @Column(length = 36, nullable = false)
     private UUID id;
 
+    // patients.id
     @Column(name = "patient_id", nullable = false, length = 36)
     private UUID patientId;
 
-    @Column(name = "visit_id", length = 36)
+    @Column(name = "visit_id", nullable = false, length = 36)
     private UUID visitId;
 
-    @Column(name = "uploader_id", nullable = false, length = 36)
+    @Column(name = "uploader_user_id", nullable = false, length = 36)
     private UUID uploaderId;
 
-    @Column(name = "document_name", nullable = false, length = 255)
+    @Column(name = "file_name", nullable = false, length = 255)
     private String documentName;
 
-    @Column(name = "object_key", nullable = false, length = 512)
+    @Column(name = "storage_key", nullable = false, length = 500)
     private String objectKey;
 
     @Column(name = "mime_type", nullable = false, length = 100)
     private String mimeType;
+
+    @Column(name = "file_size_bytes", nullable = false)
+    private long fileSizeBytes;
 
     @Column(name = "request_id", length = 64)
     private String requestId;
@@ -54,7 +58,7 @@ public class MedicalDocument {
     private DocumentType documentType;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "document_status", nullable = false, length = 20)
+    @Column(name = "status", nullable = false, length = 20)
     private DocumentStatus documentStatus;
 
     @Column(name = "status_changed_at", nullable = false)
@@ -80,6 +84,7 @@ public class MedicalDocument {
             String documentName,
             String objectKey,
             String mimeType,
+            long fileSizeBytes,
             String requestId
     ) {
         MedicalDocument document = new MedicalDocument();
@@ -89,6 +94,7 @@ public class MedicalDocument {
         document.documentName = documentName;
         document.objectKey = objectKey;
         document.mimeType = mimeType;
+        document.fileSizeBytes = fileSizeBytes;
         document.requestId = requestId;
         document.documentType = DocumentType.UNKNOWN;
         document.documentStatus = DocumentStatus.UPLOADED;
@@ -153,6 +159,10 @@ public class MedicalDocument {
 
     public String getMimeType() {
         return mimeType;
+    }
+
+    public long getFileSizeBytes() {
+        return fileSizeBytes;
     }
 
     public String getRequestId() {
