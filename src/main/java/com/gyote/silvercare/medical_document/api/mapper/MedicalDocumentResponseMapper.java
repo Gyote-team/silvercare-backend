@@ -1,7 +1,7 @@
 package com.gyote.silvercare.medical_document.api.mapper;
 
-import com.gyote.silvercare.medical_document.api.dto.response.MedicalDocumentPageResponse;
-import com.gyote.silvercare.medical_document.api.dto.response.MedicalDocumentResponse;
+import com.gyote.silvercare.medical_document.api.dto.response.MedicalDocumentDetailResponseDto;
+import com.gyote.silvercare.medical_document.api.dto.response.MedicalDocumentListResponseDto;
 import com.gyote.silvercare.medical_document.query.model.MedicalDocumentPage;
 import com.gyote.silvercare.medical_document.query.model.MedicalDocumentView;
 import org.springframework.stereotype.Component;
@@ -17,15 +17,15 @@ public class MedicalDocumentResponseMapper {
 
     private static final ZoneOffset KST = ZoneOffset.ofHours(9);
 
-    public MedicalDocumentResponse toResponse(MedicalDocumentView view) {
-        return new MedicalDocumentResponse(
+    public MedicalDocumentDetailResponseDto toResponse(MedicalDocumentView view) {
+        return new MedicalDocumentDetailResponseDto(
                 view.documentId(),
                 view.visitId(),
                 view.patientId(),
                 view.documentName(),
                 view.documentType(),
                 view.visitedOn(),
-                new MedicalDocumentResponse.Author(view.author().name(), view.author().role()),
+                new MedicalDocumentDetailResponseDto.Author(view.author().name(), view.author().role()),
                 view.documentStatus(),
                 view.latestAiJobStatus(),
                 view.resultStatus(),
@@ -36,12 +36,12 @@ public class MedicalDocumentResponseMapper {
         );
     }
 
-    public List<MedicalDocumentResponse> toResponses(List<MedicalDocumentView> views) {
+    public List<MedicalDocumentDetailResponseDto> toResponses(List<MedicalDocumentView> views) {
         return views.stream().map(this::toResponse).toList();
     }
 
-    public MedicalDocumentPageResponse toPageResponse(MedicalDocumentPage page) {
-        return new MedicalDocumentPageResponse(toResponses(page.items()), page.nextCursor());
+    public MedicalDocumentListResponseDto toPageResponse(MedicalDocumentPage page) {
+        return new MedicalDocumentListResponseDto(toResponses(page.items()), page.nextCursor());
     }
 
     private static OffsetDateTime toKst(Instant instant) {

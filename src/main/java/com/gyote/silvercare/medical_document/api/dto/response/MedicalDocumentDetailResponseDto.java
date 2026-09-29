@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-public record MedicalDocumentResponse(
+public record MedicalDocumentDetailResponseDto(
         UUID documentId,
         UUID visitId,
         UUID patientId,
