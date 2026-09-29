@@ -9,6 +9,7 @@ import com.gyote.silvercare.user.command.application.UserAccountService;
 import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
+import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.global.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,10 +27,13 @@ class CareRelationServiceTest {
     @Autowired
     private CareRelationRepository relations;
 
+    @Autowired
+    private PatientRepository patients;
+
     @Test
     void caregiverRequestsWithPatientInviteCode() {
-        UserAccountService accounts = new UserAccountService(users);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, users);
+        UserAccountService accounts = new UserAccountService(users, patients);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients);
         User patient = accounts.chooseRole(
                 accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(),
                 UserRole.PATIENT
@@ -39,18 +43,19 @@ class CareRelationServiceTest {
                 UserRole.CAREGIVER
         );
 
-        CareRelation created = cares.request(caregiver, CareRelationCode.display(patient.getInviteCode()));
+        String inviteCode = accounts.patientInviteCode(patient);
+        CareRelation created = cares.request(caregiver, CareRelationCode.display(inviteCode));
 
         assertThat(created.getStatus()).isEqualTo(CareRelationStatus.REQUESTED);
-        assertThat(created.getPatientId()).isEqualTo(patient.getId());
-        assertThatThrownBy(() -> cares.request(caregiver, patient.getInviteCode()))
+        assertThat(created.getPatientId()).isEqualTo(patients.findByUserId(patient.getId()).orElseThrow().getId());
+        assertThatThrownBy(() -> cares.request(caregiver, inviteCode))
                 .isInstanceOf(BusinessException.class);
     }
 
     @Test
     void patientAcceptsThenCaregiverCannotAccept() {
-        UserAccountService accounts = new UserAccountService(users);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, users);
+        UserAccountService accounts = new UserAccountService(users, patients);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients);
         User patient = accounts.chooseRole(
                 accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(),
                 UserRole.PATIENT
@@ -59,7 +64,7 @@ class CareRelationServiceTest {
                 accounts.loginOrRegister("kakao-minji", "김민지").getKakaoId(),
                 UserRole.CAREGIVER
         );
-        CareRelation requested = cares.request(caregiver, patient.getInviteCode());
+        CareRelation requested = cares.request(caregiver, accounts.patientInviteCode(patient));
 
         CareRelation accepted = cares.accept(patient, requested.getId());
 
@@ -70,8 +75,8 @@ class CareRelationServiceTest {
 
     @Test
     void unknownOrSelfCodeIsRejected() {
-        UserAccountService accounts = new UserAccountService(users);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, users);
+        UserAccountService accounts = new UserAccountService(users, patients);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients);
         User caregiver = accounts.chooseRole(
                 accounts.loginOrRegister("kakao-minji", "김민지").getKakaoId(),
                 UserRole.CAREGIVER
@@ -79,14 +84,12 @@ class CareRelationServiceTest {
 
         assertThatThrownBy(() -> cares.request(caregiver, "AAAAAA"))
                 .isInstanceOf(BusinessException.class);
-        assertThatThrownBy(() -> cares.request(caregiver, caregiver.getInviteCode()))
-                .isInstanceOf(BusinessException.class);
     }
 
     @Test
     void eitherSideCanRevokeActiveLink() {
-        UserAccountService accounts = new UserAccountService(users);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, users);
+        UserAccountService accounts = new UserAccountService(users, patients);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients);
         User patient = accounts.chooseRole(
                 accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(),
                 UserRole.PATIENT
@@ -95,7 +98,7 @@ class CareRelationServiceTest {
                 accounts.loginOrRegister("kakao-minji", "김민지").getKakaoId(),
                 UserRole.CAREGIVER
         );
-        CareRelation requested = cares.request(caregiver, patient.getInviteCode());
+        CareRelation requested = cares.request(caregiver, accounts.patientInviteCode(patient));
         cares.accept(patient, requested.getId());
 
         CareRelation revoked = cares.revoke(patient, requested.getId());

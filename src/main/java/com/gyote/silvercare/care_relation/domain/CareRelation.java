@@ -6,14 +6,13 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "care_relations")
+@Table(name = "caregiver_links")
 public class CareRelation {
 
     @Id
@@ -23,7 +22,7 @@ public class CareRelation {
     @Column(name = "patient_id", nullable = false, length = 36)
     private UUID patientId;
 
-    @Column(name = "caregiver_id", nullable = false, length = 36)
+    @Column(name = "caregiver_user_id", nullable = false, length = 36)
     private UUID caregiverId;
 
     @Enumerated(EnumType.STRING)
@@ -39,28 +38,15 @@ public class CareRelation {
     @Column(name = "ended_at")
     private Instant endedAt;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
-
     @PrePersist
     void onCreate() {
         if (id == null) {
             id = UUID.randomUUID();
         }
         Instant now = Instant.now();
-        createdAt = now;
-        updatedAt = now;
         if (requestedAt == null) {
             requestedAt = now;
         }
-    }
-
-    @PreUpdate
-    void onUpdate() {
-        updatedAt = Instant.now();
     }
 
     public UUID getId() {
