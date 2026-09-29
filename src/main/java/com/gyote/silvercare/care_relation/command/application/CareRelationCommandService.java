@@ -4,9 +4,10 @@ import com.gyote.silvercare.care_relation.domain.CareRelation;
 import com.gyote.silvercare.care_relation.domain.CareRelationCode;
 import com.gyote.silvercare.care_relation.domain.CareRelationStatus;
 import com.gyote.silvercare.care_relation.domain.repository.CareRelationRepository;
+import com.gyote.silvercare.patient.domain.Patient;
+import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
-import com.gyote.silvercare.user.domain.repository.UserRepository;
 import com.gyote.silvercare.care_relation.error.CareRelationErrorCode;
 import com.gyote.silvercare.global.exception.BusinessException;
 import org.springframework.stereotype.Service;
@@ -25,11 +26,14 @@ public class CareRelationCommandService {
     );
 
     private final CareRelationRepository relations;
-    private final UserRepository users;
+    private final PatientRepository patients;
 
-    public CareRelationCommandService(CareRelationRepository relations, UserRepository users) {
+    public CareRelationCommandService(
+            CareRelationRepository relations,
+            PatientRepository patients
+    ) {
         this.relations = relations;
-        this.users = users;
+        this.patients = patients;
     }
 
     @Transactional
@@ -37,10 +41,9 @@ public class CareRelationCommandService {
         if (caregiver.getRole() != UserRole.CAREGIVER) {
             throw new BusinessException(CareRelationErrorCode.CAREGIVER_ONLY);
         }
-        User patient = users.findByInviteCode(CareRelationCode.normalize(rawCode))
-                .filter(found -> found.getRole() == UserRole.PATIENT)
+        Patient patient = patients.findByInviteCode(CareRelationCode.normalize(rawCode))
                 .orElseThrow(() -> new BusinessException(CareRelationErrorCode.INVITE_CODE_NOT_FOUND));
-        if (patient.getId().equals(caregiver.getId())) {
+        if (patient.getUserId().equals(caregiver.getId())) {
             throw new BusinessException(CareRelationErrorCode.SELF_RELATION_NOT_ALLOWED);
         }
         if (relations.findFirstByPatientIdAndCaregiverIdAndStatusIn(
@@ -91,7 +94,7 @@ public class CareRelationCommandService {
     public CareRelation revoke(User actor, UUID relationId) {
         CareRelation relation = relations.findById(relationId)
                 .orElseThrow(() -> new BusinessException(CareRelationErrorCode.RELATION_NOT_FOUND));
-        boolean mine = actor.getId().equals(relation.getPatientId()) || actor.getId().equals(relation.getCaregiverId());
+        boolean mine = patientUserId(relation).equals(actor.getId()) || actor.getId().equals(relation.getCaregiverId());
         if (!mine) {
             throw new BusinessException(CareRelationErrorCode.RELATION_ACCESS_DENIED);
         }
@@ -106,7 +109,7 @@ public class CareRelationCommandService {
     private CareRelation requireOwned(User actor, UUID relationId, boolean asPatient) {
         CareRelation relation = relations.findById(relationId)
                 .orElseThrow(() -> new BusinessException(CareRelationErrorCode.RELATION_NOT_FOUND));
-        UUID expected = asPatient ? relation.getPatientId() : relation.getCaregiverId();
+        UUID expected = asPatient ? patientUserId(relation) : relation.getCaregiverId();
         if (!expected.equals(actor.getId())) {
             throw new BusinessException(CareRelationErrorCode.RELATION_ACCESS_DENIED);
         }
@@ -117,5 +120,11 @@ public class CareRelationCommandService {
             throw new BusinessException(CareRelationErrorCode.RELATION_ACCESS_DENIED);
         }
         return relation;
+    }
+
+    private UUID patientUserId(CareRelation relation) {
+        return patients.findById(relation.getPatientId())
+                .map(Patient::getUserId)
+                .orElseThrow(() -> new BusinessException(CareRelationErrorCode.RELATION_NOT_FOUND));
     }
 }

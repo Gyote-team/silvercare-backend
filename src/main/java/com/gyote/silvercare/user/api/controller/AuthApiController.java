@@ -98,12 +98,13 @@ public class AuthApiController {
     }
 
     private MeResponse toMe(User user) {
+        String inviteCode = accounts.patientInviteCode(user);
         return new MeResponse(
                 user.getId().toString(),
                 user.getName(),
                 user.getRole().name(),
                 user.getStatus().name(),
-                user.getInviteCode() == null ? null : CareRelationCode.display(user.getInviteCode())
+                inviteCode == null ? null : CareRelationCode.display(inviteCode)
         );
     }
 

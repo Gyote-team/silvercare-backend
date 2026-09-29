@@ -4,6 +4,8 @@ import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.UserStatus;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
+import com.gyote.silvercare.patient.domain.Patient;
+import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.global.exception.BusinessException;
 import com.gyote.silvercare.user.error.UserErrorCode;
 import org.springframework.stereotype.Service;
@@ -18,9 +20,11 @@ public class UserAccountService {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final UserRepository users;
+    private final PatientRepository patients;
 
-    public UserAccountService(UserRepository users) {
+    public UserAccountService(UserRepository users, PatientRepository patients) {
         this.users = users;
+        this.patients = patients;
     }
 
     @Transactional
@@ -54,21 +58,32 @@ public class UserAccountService {
         }
         user.setRole(role);
         if (role == UserRole.PATIENT) {
-            ensureInviteCode(user);
+            ensurePatientProfile(user);
         }
         return user;
     }
 
     @Transactional
-    public User ensureInviteCode(User user) {
+    public Patient ensurePatientProfile(User user) {
         if (user.getRole() != UserRole.PATIENT) {
-            return user;
+            throw new BusinessException(UserErrorCode.INVALID_ROLE);
         }
-        if (user.getInviteCode() != null && !user.getInviteCode().isBlank()) {
-            return user;
+        return patients.findByUserId(user.getId()).orElseGet(() -> {
+            Patient patient = new Patient();
+            patient.setUserId(user.getId());
+            patient.setInviteCode(newInviteCode());
+            return patients.save(patient);
+        });
+    }
+
+    @Transactional(readOnly = true)
+    public String patientInviteCode(User user) {
+        if (user.getRole() != UserRole.PATIENT) {
+            return null;
         }
-        user.setInviteCode(newInviteCode());
-        return user;
+        return patients.findByUserId(user.getId())
+                .map(Patient::getInviteCode)
+                .orElse(null);
     }
 
     private String newInviteCode() {
@@ -78,7 +93,7 @@ public class UserAccountService {
                 code.append(INVITE_ALPHABET.charAt(RANDOM.nextInt(INVITE_ALPHABET.length())));
             }
             String candidate = code.toString();
-            if (users.findByInviteCode(candidate).isEmpty()) {
+            if (patients.findByInviteCode(candidate).isEmpty()) {
                 return candidate;
             }
         }
@@ -105,7 +120,7 @@ public class UserAccountService {
             user.setRole(role);
         }
         if (role == UserRole.PATIENT) {
-            ensureInviteCode(user);
+            ensurePatientProfile(user);
         }
         return user;
     }
