@@ -5,6 +5,7 @@ import com.gyote.silvercare.care_relation.domain.repository.CareRelationReposito
 import com.gyote.silvercare.global.exception.BusinessException;
 import com.gyote.silvercare.medical_document.error.MedicalDocumentErrorCode;
 import com.gyote.silvercare.user.domain.User;
+import com.gyote.silvercare.user.domain.UserRole;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -31,6 +32,21 @@ public class MedicalDocumentAccessPolicy {
         };
         if (!allowed) {
             throw new BusinessException(MedicalDocumentErrorCode.DOCUMENT_ACCESS_DENIED);
+        }
+    }
+
+    /** 삭제 권한 규칙입니다. 개인은 본인 문서를, 보호자는 ACTIVE 연결된 개인의 문서 중 본인이 올린 문서만 삭제합니다. */
+    public void checkDeletable(User me, MedicalDocument document) {
+        boolean allowed = switch (me.getRole()) {
+            case PATIENT -> me.getId().equals(document.getPatientId());
+            case CAREGIVER -> me.getId().equals(document.getUploaderId());
+            default -> false;
+        };
+        if (!allowed) {
+            throw new BusinessException(MedicalDocumentErrorCode.DOCUMENT_ACCESS_DENIED);
+        }
+        if (me.getRole() == UserRole.CAREGIVER) {
+            checkReadable(me, document.getPatientId());
         }
     }
 }
