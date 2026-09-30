@@ -7,7 +7,9 @@ public enum MedicalDocumentErrorCode implements ErrorCode {
     DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "MEDICAL_DOCUMENT_001", "문서를 찾을 수 없습니다."),
     DOCUMENT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "MEDICAL_DOCUMENT_002", "이 문서에 접근할 권한이 없습니다."),
     INVALID_CURSOR(HttpStatus.BAD_REQUEST, "MEDICAL_DOCUMENT_003", "커서 값이 올바르지 않습니다."),
-    PATIENT_ID_REQUIRED(HttpStatus.BAD_REQUEST, "MEDICAL_DOCUMENT_004", "조회할 개인을 지정해야 합니다.");
+    PATIENT_ID_REQUIRED(HttpStatus.BAD_REQUEST, "MEDICAL_DOCUMENT_004", "조회할 개인을 지정해야 합니다."),
+    DOCUMENT_ALREADY_DELETED(HttpStatus.CONFLICT, "MEDICAL_DOCUMENT_005", "이미 삭제된 문서입니다."),
+    INVALID_PAGE_SIZE(HttpStatus.BAD_REQUEST, "MEDICAL_DOCUMENT_006", "size는 1 이상 50 이하여야 합니다.");
 
     private final HttpStatus status;
     private final String code;

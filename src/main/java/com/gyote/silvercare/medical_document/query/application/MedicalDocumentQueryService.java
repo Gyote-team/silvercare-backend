@@ -89,7 +89,9 @@ public class MedicalDocumentQueryService {
     public MedicalDocumentView get(User me, UUID documentId) {
         MedicalDocument document = documents.findByIdAndStatusNot(documentId, DocumentStatus.DELETED)
                 .orElseThrow(() -> new BusinessException(MedicalDocumentErrorCode.DOCUMENT_NOT_FOUND));
-        accessPolicy.checkReadable(me, document.getPatientId());
+        if (!accessPolicy.canRead(me, document.getPatientId())) {
+            throw new BusinessException(MedicalDocumentErrorCode.DOCUMENT_NOT_FOUND);
+        }
         String signedUrl = storage.createSignedUrl(document.getStorageKey(), SIGNED_URL_TTL);
         return toView(document, authorsById(List.of(document)), signedUrl);
     }
@@ -110,7 +112,10 @@ public class MedicalDocumentQueryService {
         if (size == null) {
             return DEFAULT_SIZE;
         }
-        return Math.max(1, Math.min(MAX_SIZE, size));
+        if (size < 1 || size > MAX_SIZE) {
+            throw new BusinessException(MedicalDocumentErrorCode.INVALID_PAGE_SIZE);
+        }
+        return size;
     }
 
     private List<MedicalDocument> fetch(UUID patientId, UUID visitId, String cursor, Pageable pageable) {

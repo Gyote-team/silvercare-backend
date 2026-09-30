@@ -138,6 +138,14 @@ class MedicalDocumentServiceTest {
     }
 
     @Test
+    void outOfRangePageSizeIsRejected() {
+        assertErrorCode(() -> queries.list(patient, null, null, null, 0),
+                MedicalDocumentErrorCode.INVALID_PAGE_SIZE);
+        assertErrorCode(() -> queries.list(patient, null, null, null, 51),
+                MedicalDocumentErrorCode.INVALID_PAGE_SIZE);
+    }
+
+    @Test
     void detailHasSignedUrlButListItemsDoNot() {
         MedicalDocument document = saveDocument(patientId, patient);
 
@@ -146,6 +154,14 @@ class MedicalDocumentServiceTest {
 
         assertThat(detail.signedUrl()).isEqualTo("https://storage.test/" + document.getStorageKey());
         assertThat(listItem.signedUrl()).isNull();
+    }
+
+    @Test
+    void unconnectedCaregiverGetsNotFoundForDetail() {
+        MedicalDocument document = saveDocument(patientId, patient);
+
+        assertErrorCode(() -> queries.get(strangerCaregiver, document.getId()),
+                MedicalDocumentErrorCode.DOCUMENT_NOT_FOUND);
     }
 
     @Test
@@ -166,12 +182,12 @@ class MedicalDocumentServiceTest {
     }
 
     @Test
-    void deletingAlreadyDeletedDocumentIsNotFound() {
+    void deletingAlreadyDeletedDocumentIsConflict() {
         MedicalDocument document = saveDocument(patientId, patient);
         commands.delete(patient, document.getId());
 
         assertErrorCode(() -> commands.delete(patient, document.getId()),
-                MedicalDocumentErrorCode.DOCUMENT_NOT_FOUND);
+                MedicalDocumentErrorCode.DOCUMENT_ALREADY_DELETED);
     }
 
     @Test
@@ -179,7 +195,7 @@ class MedicalDocumentServiceTest {
         MedicalDocument document = saveDocument(patientId, patient);
 
         assertErrorCode(() -> commands.delete(caregiver, document.getId()),
-                MedicalDocumentErrorCode.DOCUMENT_ACCESS_DENIED);
+                MedicalDocumentErrorCode.DOCUMENT_NOT_FOUND);
     }
 
     @Test

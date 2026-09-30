@@ -16,7 +16,9 @@ class MedicalDocumentErrorCodeTest {
             "DOCUMENT_NOT_FOUND,     404, MEDICAL_DOCUMENT_001",
             "DOCUMENT_ACCESS_DENIED, 403, MEDICAL_DOCUMENT_002",
             "INVALID_CURSOR,         400, MEDICAL_DOCUMENT_003",
-            "PATIENT_ID_REQUIRED,    400, MEDICAL_DOCUMENT_004"
+            "PATIENT_ID_REQUIRED,    400, MEDICAL_DOCUMENT_004",
+            "DOCUMENT_ALREADY_DELETED, 409, MEDICAL_DOCUMENT_005",
+            "INVALID_PAGE_SIZE,      400, MEDICAL_DOCUMENT_006"
     })
     void businessExceptionKeepsMedicalDocumentStatusAndCode(
             MedicalDocumentErrorCode errorCode, int expectedStatus, String expectedCode

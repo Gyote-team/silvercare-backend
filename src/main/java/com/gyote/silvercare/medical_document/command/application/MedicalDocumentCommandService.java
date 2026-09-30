@@ -1,7 +1,6 @@
 package com.gyote.silvercare.medical_document.command.application;
 
 import com.gyote.silvercare.global.exception.BusinessException;
-import com.gyote.silvercare.global.status.DocumentStatus;
 import com.gyote.silvercare.medical_document.domain.entity.MedicalDocument;
 import com.gyote.silvercare.medical_document.domain.MedicalDocumentAccessPolicy;
 import com.gyote.silvercare.medical_document.domain.MedicalDocumentDeletedEvent;
@@ -35,9 +34,14 @@ public class MedicalDocumentCommandService {
 
     @Transactional
     public void delete(User me, UUID documentId) {
-        MedicalDocument document = documents.findByIdAndStatusNot(documentId, DocumentStatus.DELETED)
+        MedicalDocument document = documents.findById(documentId)
                 .orElseThrow(() -> new BusinessException(MedicalDocumentErrorCode.DOCUMENT_NOT_FOUND));
-        accessPolicy.checkDeletable(me, document);
+        if (!accessPolicy.canDelete(me, document)) {
+            throw new BusinessException(MedicalDocumentErrorCode.DOCUMENT_NOT_FOUND);
+        }
+        if (document.isDeleted()) {
+            throw new BusinessException(MedicalDocumentErrorCode.DOCUMENT_ALREADY_DELETED);
+        }
         Instant now = Instant.now();
         document.delete(now);
         events.publishEvent(new MedicalDocumentDeletedEvent(
