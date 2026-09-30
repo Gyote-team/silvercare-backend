@@ -116,9 +116,14 @@ public class SecurityConfig {
     static String loginError(Exception exception) {
         Throwable current = exception;
         while (current != null) {
-            if (current instanceof OAuth2AuthenticationException oauth
-                    && "access_denied".equals(oauth.getError().getErrorCode())) {
-                return "canceled";
+            if (current instanceof OAuth2AuthenticationException oauth) {
+                String code = oauth.getError().getErrorCode();
+                if ("access_denied".equals(code)) {
+                    return "canceled";
+                }
+                if (KakaoOAuth2UserService.WITHDRAWN_ACCOUNT.equals(code)) {
+                    return "withdrawn";
+                }
             }
             current = current.getCause();
         }

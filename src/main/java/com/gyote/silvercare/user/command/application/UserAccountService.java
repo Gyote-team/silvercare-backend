@@ -118,6 +118,9 @@ public class UserAccountService {
             created.setStatus(UserStatus.ACTIVE);
             return users.save(created);
         });
+        if (user.getStatus() == UserStatus.WITHDRAWN) {
+            throw new BusinessException(UserErrorCode.USER_ALREADY_WITHDRAWN);
+        }
         user.setName(name);
         if (user.getRole() == UserRole.PENDING) {
             user.setRole(role);

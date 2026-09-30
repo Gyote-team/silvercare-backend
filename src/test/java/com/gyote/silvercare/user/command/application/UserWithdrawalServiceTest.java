@@ -31,7 +31,7 @@ class UserWithdrawalServiceTest {
     private CareRelationRepository relations;
 
     @Test
-    void patientWithdrawalRevokesOnlyItsActiveRelationsUsingPatientProfileId() {
+    void patientWithdrawalRevokesActiveAndCancelsRequestedRelationsUsingPatientProfileId() {
         User patientUser = saveUser("patient-kakao", UserRole.PATIENT);
         Patient patient = savePatient(patientUser, "ABC123");
         User caregiver = saveUser("caregiver-kakao", UserRole.CAREGIVER);
@@ -46,21 +46,27 @@ class UserWithdrawalServiceTest {
         assertThat(patientUser.getDeletedAt()).isNotNull();
         assertThat(active.getStatus()).isEqualTo(CareRelationStatus.REVOKED);
         assertThat(active.getEndedAt()).isNotNull();
-        assertThat(requested.getStatus()).isEqualTo(CareRelationStatus.REQUESTED);
+        assertThat(requested.getStatus()).isEqualTo(CareRelationStatus.CANCELED);
+        assertThat(requested.getEndedAt()).isNotNull();
     }
 
     @Test
-    void caregiverWithdrawalRevokesOnlyActiveRelations() {
+    void caregiverWithdrawalRevokesActiveAndCancelsRequestedRelations() {
         User patientUser = saveUser("patient-kakao", UserRole.PATIENT);
         Patient patient = savePatient(patientUser, "ABC123");
+        Patient otherPatient = savePatient(saveUser("other-patient-kakao", UserRole.PATIENT), "DEF456");
         User caregiver = saveUser("caregiver-kakao", UserRole.CAREGIVER);
         CareRelation active = saveRelation(patient.getId(), caregiver, CareRelationStatus.ACTIVE);
+        CareRelation requested = saveRelation(otherPatient.getId(), caregiver, CareRelationStatus.REQUESTED);
+        CareRelation othersActive = saveRelation(patient.getId(), saveUser("other-caregiver-kakao", UserRole.CAREGIVER), CareRelationStatus.ACTIVE);
 
         WithdrawalResponse response = service().withdraw(caregiver.getKakaoId(), true);
 
         assertThat(response.revokedRelationCount()).isEqualTo(1);
         assertThat(caregiver.getStatus()).isEqualTo(UserStatus.WITHDRAWN);
         assertThat(active.getStatus()).isEqualTo(CareRelationStatus.REVOKED);
+        assertThat(requested.getStatus()).isEqualTo(CareRelationStatus.CANCELED);
+        assertThat(othersActive.getStatus()).isEqualTo(CareRelationStatus.ACTIVE);
     }
 
     @Test

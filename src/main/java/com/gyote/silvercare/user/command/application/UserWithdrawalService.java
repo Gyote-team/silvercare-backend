@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 
-/** 회원 탈퇴와 활성 보호자 연결 해제를 함께 처리한다. */
+/** 회원 탈퇴와 함께 활성 연결은 해제하고 대기 중인 연결 요청은 취소한다. */
 @Service
 public class UserWithdrawalService {
 
@@ -49,21 +49,22 @@ public class UserWithdrawalService {
         }
 
         Instant withdrawnAt = Instant.now();
-        List<CareRelation> activeRelations = activeRelationsFor(user);
+        List<CareRelation> activeRelations = relationsFor(user, CareRelationStatus.ACTIVE);
         activeRelations.forEach(relation -> relation.revoke(withdrawnAt));
+        relationsFor(user, CareRelationStatus.REQUESTED).forEach(relation -> relation.cancel(withdrawnAt));
         user.withdraw(withdrawnAt);
 
         return new WithdrawalResponse(UserStatus.WITHDRAWN, activeRelations.size());
     }
 
-    private List<CareRelation> activeRelationsFor(User user) {
+    private List<CareRelation> relationsFor(User user, CareRelationStatus status) {
         if (user.getRole() == UserRole.CAREGIVER) {
-            return relations.findByCaregiverIdAndStatus(user.getId(), CareRelationStatus.ACTIVE);
+            return relations.findByCaregiverIdAndStatus(user.getId(), status);
         }
         if (user.getRole() == UserRole.PATIENT) {
             return patients.findByUserId(user.getId())
                     .map(Patient::getId)
-                    .map(patientId -> relations.findByPatientIdAndStatus(patientId, CareRelationStatus.ACTIVE))
+                    .map(patientId -> relations.findByPatientIdAndStatus(patientId, status))
                     .orElseGet(List::of);
         }
         return List.of();

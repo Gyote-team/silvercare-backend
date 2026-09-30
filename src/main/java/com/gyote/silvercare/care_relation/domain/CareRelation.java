@@ -102,4 +102,10 @@ public class CareRelation {
         this.status = CareRelationStatus.REVOKED;
         this.endedAt = revokedAt;
     }
+
+    /** 응답 대기 중인 연결 요청을 취소한다. */
+    public void cancel(Instant canceledAt) {
+        this.status = CareRelationStatus.CANCELED;
+        this.endedAt = canceledAt;
+    }
 }

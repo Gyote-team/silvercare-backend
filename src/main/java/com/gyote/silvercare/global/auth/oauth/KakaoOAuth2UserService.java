@@ -19,6 +19,8 @@ import java.util.Map;
 @Service
 public class KakaoOAuth2UserService extends DefaultOAuth2UserService {
 
+    public static final String WITHDRAWN_ACCOUNT = "withdrawn_account";
+
     private final UserAccountService accounts;
 
     public KakaoOAuth2UserService(UserAccountService accounts) {
@@ -31,7 +33,7 @@ public class KakaoOAuth2UserService extends DefaultOAuth2UserService {
         String kakaoId = kakaoId(oauthUser);
         User user = accounts.loginOrRegister(kakaoId, nickname(oauthUser));
         if (user.getStatus() == UserStatus.WITHDRAWN) {
-            throw new OAuth2AuthenticationException(new OAuth2Error("withdrawn_account"));
+            throw new OAuth2AuthenticationException(new OAuth2Error(WITHDRAWN_ACCOUNT));
         }
 
         Map<String, Object> attributes = new HashMap<>(oauthUser.getAttributes());

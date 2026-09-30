@@ -6,6 +6,7 @@ import com.gyote.silvercare.user.domain.UserStatus;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.global.exception.BusinessException;
+import com.gyote.silvercare.user.error.UserErrorCode;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -84,5 +85,17 @@ class UserAccountServiceTest {
         assertThat(first.getRole()).isEqualTo(UserRole.CAREGIVER);
         assertThat(again.getId()).isEqualTo(first.getId());
         assertThat(users.count()).isEqualTo(1);
+    }
+
+    @Test
+    void withdrawnDemoUserCannotLogInAgain() {
+        UserAccountService accounts = new UserAccountService(users, patients);
+        User demo = accounts.ensureDemoUser(UserRole.PATIENT);
+        demo.withdraw(java.time.Instant.now());
+
+        assertThatThrownBy(() -> accounts.ensureDemoUser(UserRole.PATIENT))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(UserErrorCode.USER_ALREADY_WITHDRAWN);
     }
 }
