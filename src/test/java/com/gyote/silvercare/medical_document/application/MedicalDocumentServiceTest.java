@@ -5,7 +5,7 @@ import com.gyote.silvercare.care_relation.domain.CareRelation;
 import com.gyote.silvercare.care_relation.domain.repository.CareRelationRepository;
 import com.gyote.silvercare.global.exception.BusinessException;
 import com.gyote.silvercare.medical_document.command.application.MedicalDocumentCommandService;
-import com.gyote.silvercare.medical_document.domain.MedicalDocument;
+import com.gyote.silvercare.medical_document.domain.entity.MedicalDocument;
 import com.gyote.silvercare.medical_document.domain.MedicalDocumentAccessPolicy;
 import com.gyote.silvercare.medical_document.domain.MedicalDocumentDeletedEvent;
 import com.gyote.silvercare.medical_document.domain.repository.MedicalDocumentRepository;

@@ -3,6 +3,7 @@ package com.gyote.silvercare.medical_document.domain;
 import com.gyote.silvercare.care_relation.domain.CareRelationStatus;
 import com.gyote.silvercare.care_relation.domain.repository.CareRelationRepository;
 import com.gyote.silvercare.global.exception.BusinessException;
+import com.gyote.silvercare.medical_document.domain.entity.MedicalDocument;
 import com.gyote.silvercare.medical_document.error.MedicalDocumentErrorCode;
 import com.gyote.silvercare.patient.domain.Patient;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;

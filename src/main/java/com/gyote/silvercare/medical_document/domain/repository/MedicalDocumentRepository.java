@@ -1,7 +1,7 @@
 package com.gyote.silvercare.medical_document.domain.repository;
 
 import com.gyote.silvercare.global.status.DocumentStatus;
-import com.gyote.silvercare.medical_document.domain.MedicalDocument;
+import com.gyote.silvercare.medical_document.domain.entity.MedicalDocument;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
