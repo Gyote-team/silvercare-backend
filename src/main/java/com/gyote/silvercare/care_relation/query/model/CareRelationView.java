@@ -16,6 +16,8 @@ public record CareRelationView(
         boolean canReject,
         boolean canCancel,
         boolean canRevoke,
-        Instant acceptedAt
+        Instant requestedAt,
+        Instant acceptedAt,
+        Instant endedAt
 ) {
 }

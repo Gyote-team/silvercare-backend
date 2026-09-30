@@ -65,8 +65,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/care-relations").hasRole("CAREGIVER")
                         .requestMatchers(HttpMethod.POST, "/api/care-relations/*/accept").hasRole("PATIENT")
                         .requestMatchers(HttpMethod.POST, "/api/care-relations/*/reject").hasRole("PATIENT")
-                        .requestMatchers(HttpMethod.POST, "/api/care-relations/*/cancel").hasRole("CAREGIVER")
-                        .requestMatchers(HttpMethod.POST, "/api/care-relations/*/revoke").hasAnyRole("PATIENT", "CAREGIVER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/care-relations/*/request").hasRole("CAREGIVER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/care-relations/*").hasAnyRole("PATIENT", "CAREGIVER")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, exception) -> {

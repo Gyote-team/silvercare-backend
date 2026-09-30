@@ -3,7 +3,9 @@ package com.gyote.silvercare.care_relation.query.application;
 import com.gyote.silvercare.care_relation.domain.CareRelation;
 import com.gyote.silvercare.care_relation.domain.CareRelationStatus;
 import com.gyote.silvercare.care_relation.domain.repository.CareRelationRepository;
+import com.gyote.silvercare.care_relation.error.CareRelationErrorCode;
 import com.gyote.silvercare.care_relation.query.model.CareRelationView;
+import com.gyote.silvercare.global.exception.BusinessException;
 import com.gyote.silvercare.patient.domain.Patient;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.user.domain.User;
@@ -54,6 +56,26 @@ public class CareRelationQueryService {
         return rows.stream().map(row -> toView(row, me, namesById)).toList();
     }
 
+    public CareRelationView detailFor(User me, UUID relationId) {
+        CareRelation row = relations.findById(relationId)
+                .orElseThrow(() -> new BusinessException(CareRelationErrorCode.RELATION_NOT_FOUND));
+        if (!isParticipant(row, me)) {
+            throw new BusinessException(CareRelationErrorCode.RELATION_ACCESS_DENIED);
+        }
+        Map<UUID, String> namesById = users.findAllById(counterpartIds(List.of(row), me)).stream()
+                .collect(Collectors.toMap(User::getId, User::getName));
+        return toView(row, me, namesById);
+    }
+
+    private boolean isParticipant(CareRelation row, User me) {
+        if (me.getRole() == UserRole.PATIENT) {
+            return patients.findByUserId(me.getId())
+                    .map(patient -> patient.getId().equals(row.getPatientId()))
+                    .orElse(false);
+        }
+        return me.getRole() == UserRole.CAREGIVER && me.getId().equals(row.getCaregiverId());
+    }
+
     private Set<UUID> counterpartIds(List<CareRelation> rows, User me) {
         boolean patientSide = me.getRole() == UserRole.PATIENT;
         return rows.stream()
@@ -69,7 +91,7 @@ public class CareRelationQueryService {
         boolean active = row.getStatus() == CareRelationStatus.ACTIVE;
         return new CareRelationView(row.getId(), row.getPatientId(), name, statusLabel(row.getStatus()), row.getStatus(),
                 patientSide && requested, patientSide && requested, !patientSide && requested, active,
-                row.getAcceptedAt());
+                row.getRequestedAt(), row.getAcceptedAt(), row.getEndedAt());
     }
 
     private static String statusLabel(CareRelationStatus status) {
