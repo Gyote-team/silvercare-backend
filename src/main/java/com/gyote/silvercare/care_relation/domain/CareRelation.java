@@ -96,4 +96,10 @@ public class CareRelation {
     public void setEndedAt(Instant endedAt) {
         this.endedAt = endedAt;
     }
+
+    /** 활성 돌봄 연결을 해제한다. */
+    public void revoke(Instant revokedAt) {
+        this.status = CareRelationStatus.REVOKED;
+        this.endedAt = revokedAt;
+    }
 }

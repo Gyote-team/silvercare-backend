@@ -16,6 +16,10 @@ public interface CareRelationRepository extends JpaRepository<CareRelation, UUID
     /** 보호자 기준 돌봄 관계를 요청일 내림차순으로 조회한다. */
     List<CareRelation> findByCaregiverIdOrderByRequestedAtDesc(UUID caregiverId);
 
+    List<CareRelation> findByPatientIdAndStatus(UUID patientId, CareRelationStatus status);
+
+    List<CareRelation> findByCaregiverIdAndStatus(UUID caregiverId, CareRelationStatus status);
+
     /** 환자와 보호자 및 허용 상태에 해당하는 첫 관계를 조회한다. */
     Optional<CareRelation> findFirstByPatientIdAndCaregiverIdAndStatusIn(
             UUID patientId,

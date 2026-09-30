@@ -1,15 +1,27 @@
 package com.gyote.silvercare.user.api.controller;
 
 import com.gyote.silvercare.care_relation.domain.CareRelationCode;
+import com.gyote.silvercare.global.auth.application.AuthCookieService;
+import com.gyote.silvercare.user.api.dto.request.WithdrawalRequest;
+import com.gyote.silvercare.user.api.dto.response.WithdrawalResponse;
+import com.gyote.silvercare.user.command.application.UserWithdrawalService;
 import com.gyote.silvercare.user.query.application.UserQueryService;
 import com.gyote.silvercare.user.api.dto.response.MeResponse;
 import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.patient.domain.Patient;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -17,10 +29,19 @@ public class MeApiController {
 
     private final UserQueryService users;
     private final PatientRepository patients;
+    private final UserWithdrawalService withdrawals;
+    private final AuthCookieService authCookies;
 
-    public MeApiController(UserQueryService users, PatientRepository patients) {
+    public MeApiController(
+            UserQueryService users,
+            PatientRepository patients,
+            UserWithdrawalService withdrawals,
+            AuthCookieService authCookies
+    ) {
         this.users = users;
         this.patients = patients;
+        this.withdrawals = withdrawals;
+        this.authCookies = authCookies;
     }
 
     @GetMapping("/api/me")
@@ -33,6 +54,23 @@ public class MeApiController {
                 user.getStatus().name(),
                 inviteCodeFor(user)
         );
+    }
+
+    @DeleteMapping("/api/me")
+    public ResponseEntity<WithdrawalResponse> withdraw(
+            @AuthenticationPrincipal OAuth2User principal,
+            @Valid @RequestBody WithdrawalRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse response
+    ) {
+        WithdrawalResponse result = withdrawals.withdraw(kakaoId(principal), request.getConfirmed());
+        authCookies.clear(response);
+        HttpSession session = httpRequest.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+        SecurityContextHolder.clearContext();
+        return ResponseEntity.ok(result);
     }
 
     private static String kakaoId(OAuth2User user) {

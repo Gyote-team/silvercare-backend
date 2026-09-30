@@ -2,10 +2,12 @@ package com.gyote.silvercare.global.auth.oauth;
 
 import com.gyote.silvercare.user.command.application.UserAccountService;
 import com.gyote.silvercare.user.domain.User;
+import com.gyote.silvercare.user.domain.UserStatus;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,9 @@ public class KakaoOAuth2UserService extends DefaultOAuth2UserService {
         OAuth2User oauthUser = super.loadUser(userRequest);
         String kakaoId = kakaoId(oauthUser);
         User user = accounts.loginOrRegister(kakaoId, nickname(oauthUser));
+        if (user.getStatus() == UserStatus.WITHDRAWN) {
+            throw new OAuth2AuthenticationException(new OAuth2Error("withdrawn_account"));
+        }
 
         Map<String, Object> attributes = new HashMap<>(oauthUser.getAttributes());
         attributes.put("id", kakaoId);

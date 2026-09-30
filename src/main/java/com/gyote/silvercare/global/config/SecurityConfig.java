@@ -93,14 +93,8 @@ public class SecurityConfig {
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
-                        .logoutSuccessHandler((request, response, authentication) -> {
-                            String accept = request.getHeader("Accept");
-                            if (accept != null && accept.contains("application/json")) {
-                                response.setStatus(HttpServletResponse.SC_NO_CONTENT);
-                                return;
-                            }
-                            response.sendRedirect(frontend.path("/login?logout"));
-                        })
+                        .logoutSuccessHandler((request, response, authentication) ->
+                                response.setStatus(HttpServletResponse.SC_NO_CONTENT))
                         .deleteCookies("SILVERCARE_SESSION", "SILVERCARE_TOKEN")
                         .invalidateHttpSession(true)
                         .clearAuthentication(true)

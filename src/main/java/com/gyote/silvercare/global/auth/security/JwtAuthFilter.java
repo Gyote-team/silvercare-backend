@@ -4,6 +4,7 @@ import com.gyote.silvercare.global.auth.application.AuthCookieService;
 import com.gyote.silvercare.global.auth.application.JwtService;
 import com.gyote.silvercare.user.query.application.UserQueryService;
 import com.gyote.silvercare.user.domain.User;
+import com.gyote.silvercare.user.domain.UserStatus;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -43,8 +45,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         Authentication current = SecurityContextHolder.getContext().getAuthentication();
         if (current != null && current.isAuthenticated()
                 && !(current.getPrincipal() instanceof String)) {
-            filterChain.doFilter(request, response);
-            return;
+            if (current.getPrincipal() instanceof OAuth2User oauthUser
+                    && isActive(oauthUser.getAttribute("id"))) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+            SecurityContextHolder.clearContext();
+            cookies.clear(response);
         }
         String token = cookies.read(request);
         if (token == null || token.isBlank()) {
@@ -53,13 +60,24 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
         try {
             User user = users.findByKakaoId(jwt.kakaoId(token)).orElse(null);
-            if (user != null) {
+            if (user != null && user.getStatus() == UserStatus.ACTIVE) {
                 SecurityContextHolder.getContext().setAuthentication(principal(user));
+            } else {
+                cookies.clear(response);
             }
         } catch (RuntimeException ignored) {
             cookies.clear(response);
         }
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isActive(Object kakaoId) {
+        if (kakaoId == null) {
+            return false;
+        }
+        return users.findByKakaoId(String.valueOf(kakaoId))
+                .map(user -> user.getStatus() == UserStatus.ACTIVE)
+                .orElse(false);
     }
 
     public static OAuth2AuthenticationToken principal(User user) {

@@ -134,4 +134,10 @@ public class User {
     public Instant getDeletedAt() {
         return deletedAt;
     }
+
+    /** 탈퇴 계정으로 전환하고 탈퇴 시각을 기록한다. */
+    public void withdraw(Instant withdrawnAt) {
+        this.status = UserStatus.WITHDRAWN;
+        this.deletedAt = withdrawnAt;
+    }
 }

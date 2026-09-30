@@ -34,6 +34,9 @@ public class UserAccountService {
         }
         String name = (nickname == null || nickname.isBlank()) ? "이용자" : nickname.trim();
         return users.findByKakaoId(kakaoId).map(existing -> {
+            if (existing.getStatus() == UserStatus.WITHDRAWN) {
+                return existing;
+            }
             existing.setName(name);
             return existing;
         }).orElseGet(() -> {
