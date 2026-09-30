@@ -45,7 +45,7 @@ public class MedicalDocumentAccessPolicy {
     public void checkDeletable(User me, MedicalDocument document) {
         boolean allowed = switch (me.getRole()) {
             case PATIENT -> ownPatientId(me).filter(document.getPatientId()::equals).isPresent();
-            case CAREGIVER -> me.getId().equals(document.getUploaderId());
+            case CAREGIVER -> me.getId().equals(document.getUploaderUserId());
             default -> false;
         };
         if (!allowed) {

@@ -16,7 +16,7 @@ public class LocalDocumentStorage implements DocumentStoragePort {
     private static final String BASE_URL = "http://localhost:8080/local-documents/";
 
     @Override
-    public String createSignedUrl(String objectKey, Duration ttl) {
-        return BASE_URL + objectKey + "?expiresAt=" + Instant.now().plus(ttl);
+    public String createSignedUrl(String storageKey, Duration ttl) {
+        return BASE_URL + storageKey + "?expiresAt=" + Instant.now().plus(ttl);
     }
 }

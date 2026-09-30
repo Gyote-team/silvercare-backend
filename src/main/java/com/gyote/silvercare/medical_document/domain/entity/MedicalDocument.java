@@ -36,13 +36,13 @@ public class MedicalDocument {
     private UUID visitId;
 
     @Column(name = "uploader_user_id", nullable = false, length = 36)
-    private UUID uploaderId;
+    private UUID uploaderUserId;
 
     @Column(name = "file_name", nullable = false, length = 255)
-    private String documentName;
+    private String fileName;
 
     @Column(name = "storage_key", nullable = false, length = 500)
-    private String objectKey;
+    private String storageKey;
 
     @Column(name = "mime_type", nullable = false, length = 100)
     private String mimeType;
@@ -59,7 +59,7 @@ public class MedicalDocument {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    private DocumentStatus documentStatus;
+    private DocumentStatus status;
 
     @Column(name = "status_changed_at", nullable = false)
     private Instant statusChangedAt;
@@ -80,9 +80,9 @@ public class MedicalDocument {
     public static MedicalDocument uploaded(
             UUID patientId,
             UUID visitId,
-            UUID uploaderId,
-            String documentName,
-            String objectKey,
+            UUID uploaderUserId,
+            String fileName,
+            String storageKey,
             String mimeType,
             long fileSizeBytes,
             String requestId
@@ -90,14 +90,14 @@ public class MedicalDocument {
         MedicalDocument document = new MedicalDocument();
         document.patientId = patientId;
         document.visitId = visitId;
-        document.uploaderId = uploaderId;
-        document.documentName = documentName;
-        document.objectKey = objectKey;
+        document.uploaderUserId = uploaderUserId;
+        document.fileName = fileName;
+        document.storageKey = storageKey;
         document.mimeType = mimeType;
         document.fileSizeBytes = fileSizeBytes;
         document.requestId = requestId;
         document.documentType = DocumentType.UNKNOWN;
-        document.documentStatus = DocumentStatus.UPLOADED;
+        document.status = DocumentStatus.UPLOADED;
         return document;
     }
 
@@ -124,13 +124,13 @@ public class MedicalDocument {
         if (isDeleted()) {
             throw new BusinessException(MedicalDocumentErrorCode.DOCUMENT_NOT_FOUND);
         }
-        documentStatus = DocumentStatus.DELETED;
+        status = DocumentStatus.DELETED;
         deletedAt = now;
         statusChangedAt = now;
     }
 
     public boolean isDeleted() {
-        return documentStatus == DocumentStatus.DELETED;
+        return status == DocumentStatus.DELETED;
     }
 
     public UUID getId() {
@@ -145,16 +145,16 @@ public class MedicalDocument {
         return visitId;
     }
 
-    public UUID getUploaderId() {
-        return uploaderId;
+    public UUID getUploaderUserId() {
+        return uploaderUserId;
     }
 
-    public String getDocumentName() {
-        return documentName;
+    public String getFileName() {
+        return fileName;
     }
 
-    public String getObjectKey() {
-        return objectKey;
+    public String getStorageKey() {
+        return storageKey;
     }
 
     public String getMimeType() {
@@ -173,8 +173,8 @@ public class MedicalDocument {
         return documentType;
     }
 
-    public DocumentStatus getDocumentStatus() {
-        return documentStatus;
+    public DocumentStatus getStatus() {
+        return status;
     }
 
     public Instant getStatusChangedAt() {

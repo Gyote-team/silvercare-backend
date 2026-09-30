@@ -68,7 +68,7 @@ class MedicalDocumentServiceTest {
         MedicalDocumentAccessPolicy accessPolicy = new MedicalDocumentAccessPolicy(relations, patients);
         queries = new MedicalDocumentQueryService(
                 documents, users, new UserQueryService(users), patients, accessPolicy,
-                (objectKey, ttl) -> "https://storage.test/" + objectKey);
+                (storageKey, ttl) -> "https://storage.test/" + storageKey);
         publishedEvents = new ArrayList<>();
         commands = new MedicalDocumentCommandService(documents, accessPolicy, publishedEvents::add);
 
@@ -144,7 +144,7 @@ class MedicalDocumentServiceTest {
         MedicalDocumentView detail = queries.get(patient, document.getId());
         MedicalDocumentView listItem = queries.list(patient, null, null, null, null).items().get(0);
 
-        assertThat(detail.signedUrl()).isEqualTo("https://storage.test/" + document.getObjectKey());
+        assertThat(detail.signedUrl()).isEqualTo("https://storage.test/" + document.getStorageKey());
         assertThat(listItem.signedUrl()).isNull();
     }
 

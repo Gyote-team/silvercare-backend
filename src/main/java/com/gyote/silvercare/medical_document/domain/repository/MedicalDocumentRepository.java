@@ -19,13 +19,13 @@ import java.util.UUID;
  */
 public interface MedicalDocumentRepository extends JpaRepository<MedicalDocument, UUID> {
 
-    Optional<MedicalDocument> findByIdAndDocumentStatusNot(UUID id, DocumentStatus excluded);
+    Optional<MedicalDocument> findByIdAndStatusNot(UUID id, DocumentStatus excluded);
 
     /** 첫 페이지 (방문 필터 없음) */
     @Query("""
             select d from MedicalDocument d
             where d.patientId = :patientId
-              and d.documentStatus <> :excluded
+              and d.status <> :excluded
             order by d.createdAt desc, d.id desc
             """)
     List<MedicalDocument> findFirstPage(
@@ -39,7 +39,7 @@ public interface MedicalDocumentRepository extends JpaRepository<MedicalDocument
             select d from MedicalDocument d
             where d.patientId = :patientId
               and d.visitId = :visitId
-              and d.documentStatus <> :excluded
+              and d.status <> :excluded
             order by d.createdAt desc, d.id desc
             """)
     List<MedicalDocument> findFirstPageByVisit(
@@ -53,7 +53,7 @@ public interface MedicalDocumentRepository extends JpaRepository<MedicalDocument
     @Query("""
             select d from MedicalDocument d
             where d.patientId = :patientId
-              and d.documentStatus <> :excluded
+              and d.status <> :excluded
               and (d.createdAt < :cursorCreatedAt
                    or (d.createdAt = :cursorCreatedAt and d.id < :cursorId))
             order by d.createdAt desc, d.id desc
@@ -71,7 +71,7 @@ public interface MedicalDocumentRepository extends JpaRepository<MedicalDocument
             select d from MedicalDocument d
             where d.patientId = :patientId
               and d.visitId = :visitId
-              and d.documentStatus <> :excluded
+              and d.status <> :excluded
               and (d.createdAt < :cursorCreatedAt
                    or (d.createdAt = :cursorCreatedAt and d.id < :cursorId))
             order by d.createdAt desc, d.id desc

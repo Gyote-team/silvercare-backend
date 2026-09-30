@@ -35,7 +35,7 @@ public class MedicalDocumentCommandService {
 
     @Transactional
     public void delete(User me, UUID documentId) {
-        MedicalDocument document = documents.findByIdAndDocumentStatusNot(documentId, DocumentStatus.DELETED)
+        MedicalDocument document = documents.findByIdAndStatusNot(documentId, DocumentStatus.DELETED)
                 .orElseThrow(() -> new BusinessException(MedicalDocumentErrorCode.DOCUMENT_NOT_FOUND));
         accessPolicy.checkDeletable(me, document);
         Instant now = Instant.now();

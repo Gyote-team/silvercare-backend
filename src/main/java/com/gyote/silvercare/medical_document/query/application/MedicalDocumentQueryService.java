@@ -87,10 +87,10 @@ public class MedicalDocumentQueryService {
     }
 
     public MedicalDocumentView get(User me, UUID documentId) {
-        MedicalDocument document = documents.findByIdAndDocumentStatusNot(documentId, DocumentStatus.DELETED)
+        MedicalDocument document = documents.findByIdAndStatusNot(documentId, DocumentStatus.DELETED)
                 .orElseThrow(() -> new BusinessException(MedicalDocumentErrorCode.DOCUMENT_NOT_FOUND));
         accessPolicy.checkReadable(me, document.getPatientId());
-        String signedUrl = storage.createSignedUrl(document.getObjectKey(), SIGNED_URL_TTL);
+        String signedUrl = storage.createSignedUrl(document.getStorageKey(), SIGNED_URL_TTL);
         return toView(document, authorsById(List.of(document)), signedUrl);
     }
 
@@ -128,14 +128,14 @@ public class MedicalDocumentQueryService {
 
     private Map<UUID, User> authorsById(List<MedicalDocument> rows) {
         Set<UUID> uploaderIds = rows.stream()
-                .map(MedicalDocument::getUploaderId)
+                .map(MedicalDocument::getUploaderUserId)
                 .collect(Collectors.toSet());
         return users.findAllById(uploaderIds).stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
     }
 
     private static MedicalDocumentView toView(MedicalDocument document, Map<UUID, User> authorsById, String signedUrl) {
-        User uploader = authorsById.get(document.getUploaderId());
+        User uploader = authorsById.get(document.getUploaderUserId());
         MedicalDocumentView.Author author = uploader == null
                 ? new MedicalDocumentView.Author("이용자", null)
                 : new MedicalDocumentView.Author(uploader.getName(), uploader.getRole().name());
@@ -143,11 +143,11 @@ public class MedicalDocumentQueryService {
                 document.getId(),
                 document.getVisitId(),
                 document.getPatientId(),
-                document.getDocumentName(),
+                document.getFileName(),
                 document.getDocumentType(),
                 null,
                 author,
-                document.getDocumentStatus(),
+                document.getStatus(),
                 null,
                 null,
                 document.getStatusChangedAt(),
