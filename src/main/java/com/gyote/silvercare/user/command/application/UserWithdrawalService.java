@@ -42,7 +42,7 @@ public class UserWithdrawalService {
             throw new BusinessException(UserErrorCode.WITHDRAWAL_CONFIRMATION_REQUIRED);
         }
 
-        User user = users.findByKakaoId(kakaoId)
+        User user = users.findByKakaoIdForUpdate(kakaoId)
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
         if (user.getStatus() == UserStatus.WITHDRAWN) {
             throw new BusinessException(UserErrorCode.USER_ALREADY_WITHDRAWN);

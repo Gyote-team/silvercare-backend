@@ -64,7 +64,7 @@ public class MeApiController {
             HttpServletResponse response
     ) {
         WithdrawalResponse result = withdrawals.withdraw(kakaoId(principal), request.getConfirmed());
-        authCookies.clear(response);
+        authCookies.clearAll(response);
         HttpSession session = httpRequest.getSession(false);
         if (session != null) {
             session.invalidate();

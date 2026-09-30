@@ -3,6 +3,8 @@ package com.gyote.silvercare.care_relation.domain.repository;
 import com.gyote.silvercare.care_relation.domain.CareRelation;
 import com.gyote.silvercare.care_relation.domain.CareRelationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -33,4 +35,15 @@ public interface CareRelationRepository extends JpaRepository<CareRelation, UUID
             UUID caregiverId,
             CareRelationStatus status
     );
+
+    /** 사용자 행을 잠그기 전에 관계 엔티티를 영속성 컨텍스트에 올리지 않고 당사자만 조회한다. */
+    @Query("select r.patientId as patientId, r.caregiverId as caregiverId from CareRelation r where r.id = :id")
+    Optional<Participants> findParticipantsById(@Param("id") UUID id);
+
+    /** 관계 당사자 식별자 프로젝션이다. */
+    interface Participants {
+        UUID getPatientId();
+
+        UUID getCaregiverId();
+    }
 }
