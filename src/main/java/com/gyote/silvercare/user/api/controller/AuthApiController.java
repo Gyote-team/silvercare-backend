@@ -110,13 +110,7 @@ public class AuthApiController {
 
     private MeResponse toMe(User user) {
         String inviteCode = accounts.patientInviteCode(user);
-        return new MeResponse(
-                user.getId().toString(),
-                user.getName(),
-                user.getRole().name(),
-                user.getStatus().name(),
-                inviteCode == null ? null : CareRelationCode.display(inviteCode)
-        );
+        return MeResponse.of(user, inviteCode == null ? null : CareRelationCode.display(inviteCode));
     }
 
     private void refreshSession(OAuth2User current, User updated) {

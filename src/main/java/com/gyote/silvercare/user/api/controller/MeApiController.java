@@ -47,13 +47,7 @@ public class MeApiController {
     @GetMapping("/api/me")
     public MeResponse me(@AuthenticationPrincipal OAuth2User principal) {
         User user = users.requireByKakaoId(kakaoId(principal));
-        return new MeResponse(
-                user.getId().toString(),
-                user.getName(),
-                user.getRole().name(),
-                user.getStatus().name(),
-                inviteCodeFor(user)
-        );
+        return MeResponse.of(user, inviteCodeFor(user));
     }
 
     @DeleteMapping("/api/me")

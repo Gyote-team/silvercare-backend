@@ -2,6 +2,7 @@ package com.gyote.silvercare.care_relation.query.model;
 
 import com.gyote.silvercare.care_relation.domain.CareRelationStatus;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /** Query application layer에서 사용하는 읽기 전용 모델입니다. */
@@ -14,6 +15,7 @@ public record CareRelationView(
         boolean canAccept,
         boolean canReject,
         boolean canCancel,
-        boolean canRevoke
+        boolean canRevoke,
+        Instant acceptedAt
 ) {
 }

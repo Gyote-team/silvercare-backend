@@ -16,6 +16,8 @@ import java.util.UUID;
 @Table(name = "users")
 public class User {
 
+    public static final String DEMO_KAKAO_ID_PREFIX = "demo-";
+
     @Id
     @Column(length = 36, nullable = false)
     private UUID id;
@@ -133,6 +135,11 @@ public class User {
 
     public Instant getDeletedAt() {
         return deletedAt;
+    }
+
+    /** 시연용 로그인으로 만든 계정은 kakao_id가 demo- 로 시작한다. */
+    public boolean isDemoAccount() {
+        return kakaoId != null && kakaoId.startsWith(DEMO_KAKAO_ID_PREFIX);
     }
 
     /**
