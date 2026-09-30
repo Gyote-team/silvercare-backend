@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record CareRelationResponse(
         UUID id,
+        UUID patientId,
         String counterpartName,
         String statusLabel,
         CareRelationStatus status,
