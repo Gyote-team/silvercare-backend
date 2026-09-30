@@ -9,6 +9,7 @@ import com.gyote.silvercare.user.domain.User;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -51,6 +52,11 @@ public class CareRelationApiController {
         return ResponseEntity.ok(responseMapper.toResponses(queries.listFor(me)));
     }
 
+    @GetMapping("/api/care-relations/{id}")
+    public CareRelationResponse detail(@AuthenticationPrincipal OAuth2User user, @PathVariable UUID id) {
+        return responseMapper.toResponse(queries.detailFor(queries.requireUser(kakaoId(user)), id));
+    }
+
     @PostMapping("/api/care-relations/{id}/accept")
     public ResponseEntity<?> accept(@AuthenticationPrincipal OAuth2User user, @PathVariable UUID id) {
         return mutate(user, () -> commands.accept(queries.requireUser(kakaoId(user)), id));
@@ -61,12 +67,12 @@ public class CareRelationApiController {
         return mutate(user, () -> commands.reject(queries.requireUser(kakaoId(user)), id));
     }
 
-    @PostMapping("/api/care-relations/{id}/cancel")
+    @DeleteMapping("/api/care-relations/{id}/request")
     public ResponseEntity<?> cancel(@AuthenticationPrincipal OAuth2User user, @PathVariable UUID id) {
         return mutate(user, () -> commands.cancel(queries.requireUser(kakaoId(user)), id));
     }
 
-    @PostMapping("/api/care-relations/{id}/revoke")
+    @DeleteMapping("/api/care-relations/{id}")
     public ResponseEntity<?> revoke(@AuthenticationPrincipal OAuth2User user, @PathVariable UUID id) {
         return mutate(user, () -> commands.revoke(queries.requireUser(kakaoId(user)), id));
     }
