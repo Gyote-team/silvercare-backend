@@ -8,6 +8,8 @@ import com.gyote.silvercare.patient.domain.Patient;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
+import com.gyote.silvercare.user.domain.UserStatus;
+import com.gyote.silvercare.user.domain.repository.UserRepository;
 import com.gyote.silvercare.care_relation.error.CareRelationErrorCode;
 import com.gyote.silvercare.global.exception.BusinessException;
 import org.springframework.stereotype.Service;
@@ -27,13 +29,16 @@ public class CareRelationCommandService {
 
     private final CareRelationRepository relations;
     private final PatientRepository patients;
+    private final UserRepository users;
 
     public CareRelationCommandService(
             CareRelationRepository relations,
-            PatientRepository patients
+            PatientRepository patients,
+            UserRepository users
     ) {
         this.relations = relations;
         this.patients = patients;
+        this.users = users;
     }
 
     @Transactional
@@ -42,6 +47,7 @@ public class CareRelationCommandService {
             throw new BusinessException(CareRelationErrorCode.CAREGIVER_ONLY);
         }
         Patient patient = patients.findByInviteCode(CareRelationCode.normalize(rawCode))
+                .filter(this::isActivePatient)
                 .orElseThrow(() -> new BusinessException(CareRelationErrorCode.INVITE_CODE_NOT_FOUND));
         if (patient.getUserId().equals(caregiver.getId())) {
             throw new BusinessException(CareRelationErrorCode.SELF_RELATION_NOT_ALLOWED);
@@ -120,6 +126,13 @@ public class CareRelationCommandService {
             throw new BusinessException(CareRelationErrorCode.RELATION_ACCESS_DENIED);
         }
         return relation;
+    }
+
+    /** 탈퇴한 환자의 초대 코드는 존재하지 않는 코드와 동일하게 취급한다. */
+    private boolean isActivePatient(Patient patient) {
+        return users.findById(patient.getUserId())
+                .map(user -> user.getStatus() == UserStatus.ACTIVE)
+                .orElse(false);
     }
 
     private UUID patientUserId(CareRelation relation) {

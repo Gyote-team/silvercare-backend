@@ -5,7 +5,9 @@ import com.gyote.silvercare.care_relation.domain.CareRelationCode;
 import com.gyote.silvercare.care_relation.domain.CareRelation;
 import com.gyote.silvercare.care_relation.domain.CareRelationStatus;
 import com.gyote.silvercare.care_relation.domain.repository.CareRelationRepository;
+import com.gyote.silvercare.care_relation.error.CareRelationErrorCode;
 import com.gyote.silvercare.user.command.application.UserAccountService;
+import com.gyote.silvercare.user.command.application.UserWithdrawalService;
 import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
@@ -33,7 +35,7 @@ class CareRelationServiceTest {
     @Test
     void caregiverRequestsWithPatientInviteCode() {
         UserAccountService accounts = new UserAccountService(users, patients);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, patients);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
         User patient = accounts.chooseRole(
                 accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(),
                 UserRole.PATIENT
@@ -55,7 +57,7 @@ class CareRelationServiceTest {
     @Test
     void patientAcceptsThenCaregiverCannotAccept() {
         UserAccountService accounts = new UserAccountService(users, patients);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, patients);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
         User patient = accounts.chooseRole(
                 accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(),
                 UserRole.PATIENT
@@ -76,7 +78,7 @@ class CareRelationServiceTest {
     @Test
     void unknownOrSelfCodeIsRejected() {
         UserAccountService accounts = new UserAccountService(users, patients);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, patients);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
         User caregiver = accounts.chooseRole(
                 accounts.loginOrRegister("kakao-minji", "김민지").getKakaoId(),
                 UserRole.CAREGIVER
@@ -87,9 +89,33 @@ class CareRelationServiceTest {
     }
 
     @Test
+    void withdrawnPatientInviteCodeIsRejected() {
+        UserAccountService accounts = new UserAccountService(users, patients);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
+        UserWithdrawalService withdrawals = new UserWithdrawalService(users, patients, relations);
+        User patient = accounts.chooseRole(
+                accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(),
+                UserRole.PATIENT
+        );
+        User caregiver = accounts.chooseRole(
+                accounts.loginOrRegister("kakao-minji", "김민지").getKakaoId(),
+                UserRole.CAREGIVER
+        );
+        String inviteCode = accounts.patientInviteCode(patient);
+
+        withdrawals.withdraw(patient.getKakaoId(), true);
+
+        assertThatThrownBy(() -> cares.request(caregiver, inviteCode))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(CareRelationErrorCode.INVITE_CODE_NOT_FOUND);
+        assertThat(relations.findByCaregiverIdOrderByRequestedAtDesc(caregiver.getId())).isEmpty();
+    }
+
+    @Test
     void eitherSideCanRevokeActiveLink() {
         UserAccountService accounts = new UserAccountService(users, patients);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, patients);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
         User patient = accounts.chooseRole(
                 accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(),
                 UserRole.PATIENT
