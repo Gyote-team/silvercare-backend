@@ -27,6 +27,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -74,6 +75,16 @@ public class AuthApiController {
         return ResponseEntity.ok(toMe(updated));
     }
 
+    /** 기능 명세의 역할 선택 경로다. 기존 프론트의 POST 경로도 위 메서드로 유지한다. */
+    @PutMapping("/api/me/role")
+    public ResponseEntity<MeResponse> chooseRoleAtMe(
+            @AuthenticationPrincipal OAuth2User user,
+            @RequestBody RoleRequest request,
+            HttpServletResponse response
+    ) {
+        return chooseRole(user, request, response);
+    }
+
     @PostMapping("/api/demo/login")
     public ResponseEntity<MeResponse> demoLogin(
             @RequestBody DemoLoginRequest request,
@@ -99,13 +110,7 @@ public class AuthApiController {
 
     private MeResponse toMe(User user) {
         String inviteCode = accounts.patientInviteCode(user);
-        return new MeResponse(
-                user.getId().toString(),
-                user.getName(),
-                user.getRole().name(),
-                user.getStatus().name(),
-                inviteCode == null ? null : CareRelationCode.display(inviteCode)
-        );
+        return MeResponse.of(user, inviteCode == null ? null : CareRelationCode.display(inviteCode));
     }
 
     private void refreshSession(OAuth2User current, User updated) {

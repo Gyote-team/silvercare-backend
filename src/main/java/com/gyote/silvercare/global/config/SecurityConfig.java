@@ -93,14 +93,8 @@ public class SecurityConfig {
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
-                        .logoutSuccessHandler((request, response, authentication) -> {
-                            String accept = request.getHeader("Accept");
-                            if (accept != null && accept.contains("application/json")) {
-                                response.setStatus(HttpServletResponse.SC_NO_CONTENT);
-                                return;
-                            }
-                            response.sendRedirect(frontend.path("/login?logout"));
-                        })
+                        .logoutSuccessHandler((request, response, authentication) ->
+                                response.setStatus(HttpServletResponse.SC_NO_CONTENT))
                         .deleteCookies("SILVERCARE_SESSION", "SILVERCARE_TOKEN")
                         .invalidateHttpSession(true)
                         .clearAuthentication(true)
@@ -122,9 +116,11 @@ public class SecurityConfig {
     static String loginError(Exception exception) {
         Throwable current = exception;
         while (current != null) {
-            if (current instanceof OAuth2AuthenticationException oauth
-                    && "access_denied".equals(oauth.getError().getErrorCode())) {
-                return "canceled";
+            if (current instanceof OAuth2AuthenticationException oauth) {
+                String code = oauth.getError().getErrorCode();
+                if ("access_denied".equals(code)) {
+                    return "canceled";
+                }
             }
             current = current.getCause();
         }

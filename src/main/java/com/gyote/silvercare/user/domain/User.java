@@ -16,6 +16,8 @@ import java.util.UUID;
 @Table(name = "users")
 public class User {
 
+    public static final String DEMO_KAKAO_ID_PREFIX = "demo-";
+
     @Id
     @Column(length = 36, nullable = false)
     private UUID id;
@@ -133,5 +135,20 @@ public class User {
 
     public Instant getDeletedAt() {
         return deletedAt;
+    }
+
+    /** 시연용 로그인으로 만든 계정은 kakao_id가 demo- 로 시작한다. */
+    public boolean isDemoAccount() {
+        return kakaoId != null && kakaoId.startsWith(DEMO_KAKAO_ID_PREFIX);
+    }
+
+    /**
+     * 탈퇴 계정으로 전환하고 탈퇴 시각을 기록한다.
+     * 같은 카카오 계정으로 새로 가입할 수 있도록 kakao_id 고유 제약에서 이 행을 풀어 준다.
+     */
+    public void withdraw(Instant withdrawnAt) {
+        this.status = UserStatus.WITHDRAWN;
+        this.deletedAt = withdrawnAt;
+        this.kakaoId = null;
     }
 }
