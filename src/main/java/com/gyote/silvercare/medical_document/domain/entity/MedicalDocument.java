@@ -12,6 +12,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -22,6 +25,8 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "documents")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MedicalDocument {
 
     @Id
@@ -72,9 +77,6 @@ public class MedicalDocument {
 
     @Column(name = "deleted_at")
     private Instant deletedAt;
-
-    protected MedicalDocument() {
-    }
 
     /** 업로드 직후 문서를 만듭니다. 상태는 UPLOADED, 유형은 분류 전이므로 UNKNOWN입니다. */
     public static MedicalDocument uploaded(
@@ -131,65 +133,5 @@ public class MedicalDocument {
 
     public boolean isDeleted() {
         return status == DocumentStatus.DELETED;
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public UUID getPatientId() {
-        return patientId;
-    }
-
-    public UUID getVisitId() {
-        return visitId;
-    }
-
-    public UUID getUploaderUserId() {
-        return uploaderUserId;
-    }
-
-    public String getFileName() {
-        return fileName;
-    }
-
-    public String getStorageKey() {
-        return storageKey;
-    }
-
-    public String getMimeType() {
-        return mimeType;
-    }
-
-    public long getFileSizeBytes() {
-        return fileSizeBytes;
-    }
-
-    public String getRequestId() {
-        return requestId;
-    }
-
-    public DocumentType getDocumentType() {
-        return documentType;
-    }
-
-    public DocumentStatus getStatus() {
-        return status;
-    }
-
-    public Instant getStatusChangedAt() {
-        return statusChangedAt;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public Instant getDeletedAt() {
-        return deletedAt;
     }
 }
