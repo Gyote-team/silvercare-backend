@@ -103,13 +103,14 @@ class AiDocumentQueryServiceTest {
                 "id", visitId, "patientId", patientProfile.getId(), "visitedOn", LocalDate.of(2026, 9, 20));
         execute("""
                 INSERT INTO documents
-                    (id, visit_id, uploader_user_id, storage_key, file_name, mime_type,
-                     file_size_bytes, document_type, status, created_at, updated_at)
+                    (id, patient_id, visit_id, uploader_user_id, storage_key, file_name, mime_type,
+                     file_size_bytes, document_type, status, status_changed_at, created_at, updated_at)
                 VALUES
-                    (:id, :visitId, :uploaderId, :storageKey, :fileName, :mimeType,
-                     :fileSize, :documentType, :status, :createdAt, :updatedAt)
+                    (:id, :patientId, :visitId, :uploaderId, :storageKey, :fileName, :mimeType,
+                     :fileSize, :documentType, :status, :statusChangedAt, :createdAt, :updatedAt)
                 """,
                 "id", documentId,
+                "patientId", patientProfile.getId(),
                 "visitId", visitId,
                 "uploaderId", patient.getId(),
                 "storageKey", "documents/issue-3.pdf",
@@ -118,6 +119,7 @@ class AiDocumentQueryServiceTest {
                 "fileSize", 1024L,
                 "documentType", "LAB_RESULT",
                 "status", "READY",
+                "statusChangedAt", createdAt,
                 "createdAt", createdAt,
                 "updatedAt", createdAt);
         execute("""

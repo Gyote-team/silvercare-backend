@@ -94,12 +94,13 @@ BEGIN
         memo = EXCLUDED.memo;
 
     INSERT INTO documents (
-        id, visit_id, uploader_user_id, storage_key, file_name, mime_type,
+        id, visit_id, patient_id, uploader_user_id, storage_key, file_name, mime_type,
         file_size_bytes, document_type, status, created_at, updated_at
     )
     VALUES (
         document_id,
         visit_id,
+        patient_id,
         patient_user_id,
         'dummy/issue-3/lab-result-2026-09-28.pdf',
         '2026-09-28_혈액검사결과지.pdf',
