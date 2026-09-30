@@ -1,12 +1,15 @@
 package com.gyote.silvercare.medical_document.query.application;
 
 import com.gyote.silvercare.global.exception.BusinessException;
+import com.gyote.silvercare.global.status.AiJobStatus;
 import com.gyote.silvercare.global.status.DocumentStatus;
+import com.gyote.silvercare.global.status.ResultStatus;
 import com.gyote.silvercare.medical_document.domain.DocumentStoragePort;
 import com.gyote.silvercare.medical_document.domain.entity.MedicalDocument;
 import com.gyote.silvercare.medical_document.domain.MedicalDocumentAccessPolicy;
 import com.gyote.silvercare.medical_document.domain.repository.MedicalDocumentRepository;
 import com.gyote.silvercare.medical_document.error.MedicalDocumentErrorCode;
+import com.gyote.silvercare.medical_document.query.model.MedicalDocumentAiStatusRow;
 import com.gyote.silvercare.medical_document.query.model.MedicalDocumentPage;
 import com.gyote.silvercare.medical_document.query.model.MedicalDocumentView;
 import com.gyote.silvercare.patient.domain.Patient;
@@ -23,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.Base64;
 import java.util.List;
@@ -79,8 +83,9 @@ public class MedicalDocumentQueryService {
         List<MedicalDocument> page = hasNext ? rows.subList(0, pageSize) : rows;
 
         Map<UUID, User> authorsById = authorsById(page);
+        Map<UUID, MedicalDocumentAiStatusRow> aiStatusesById = aiStatusesById(page);
         List<MedicalDocumentView> items = page.stream()
-                .map(document -> toView(document, authorsById, null))
+                .map(document -> toView(document, authorsById, aiStatusesById, null))
                 .toList();
         String nextCursor = hasNext ? encodeCursor(page.get(page.size() - 1)) : null;
         return new MedicalDocumentPage(items, nextCursor);
@@ -93,7 +98,8 @@ public class MedicalDocumentQueryService {
             throw new BusinessException(MedicalDocumentErrorCode.DOCUMENT_NOT_FOUND);
         }
         String signedUrl = storage.createSignedUrl(document.getStorageKey(), SIGNED_URL_TTL);
-        return toView(document, authorsById(List.of(document)), signedUrl);
+        List<MedicalDocument> single = List.of(document);
+        return toView(document, authorsById(single), aiStatusesById(single), signedUrl);
     }
 
     private UUID resolvePatientId(User me, UUID patientId) {
@@ -139,27 +145,50 @@ public class MedicalDocumentQueryService {
                 .collect(Collectors.toMap(User::getId, Function.identity()));
     }
 
-    private static MedicalDocumentView toView(MedicalDocument document, Map<UUID, User> authorsById, String signedUrl) {
+    private Map<UUID, MedicalDocumentAiStatusRow> aiStatusesById(List<MedicalDocument> rows) {
+        if (rows.isEmpty()) {
+            return Map.of();
+        }
+        List<UUID> documentIds = rows.stream().map(MedicalDocument::getId).toList();
+        return documents.findAiStatusesByDocumentIds(documentIds).stream()
+                .collect(Collectors.toMap(row -> UUID.fromString(row.getDocumentId()), Function.identity()));
+    }
+
+    private static MedicalDocumentView toView(
+            MedicalDocument document,
+            Map<UUID, User> authorsById,
+            Map<UUID, MedicalDocumentAiStatusRow> aiStatusesById,
+            String signedUrl
+    ) {
         User uploader = authorsById.get(document.getUploaderUserId());
         MedicalDocumentView.Author author = uploader == null
                 ? new MedicalDocumentView.Author("이용자", null)
                 : new MedicalDocumentView.Author(uploader.getName(), uploader.getRole().name());
+        MedicalDocumentAiStatusRow aiStatus = aiStatusesById.get(document.getId());
+        LocalDate visitedOn = aiStatus == null ? null : aiStatus.getVisitedOn();
+        AiJobStatus jobStatus = aiStatus == null ? null : nullableEnum(AiJobStatus.class, aiStatus.getJobStatus());
+        ResultStatus resultStatus = aiStatus == null ? null : nullableEnum(ResultStatus.class, aiStatus.getResultStatus());
+        boolean retryable = aiStatus != null && Boolean.TRUE.equals(aiStatus.getRetryable());
         return new MedicalDocumentView(
                 document.getId(),
                 document.getVisitId(),
                 document.getPatientId(),
                 document.getFileName(),
                 document.getDocumentType(),
-                null,
+                visitedOn,
                 author,
                 document.getStatus(),
-                null,
-                null,
+                jobStatus,
+                resultStatus,
                 document.getStatusChangedAt(),
-                false,
+                retryable,
                 signedUrl,
                 document.getCreatedAt()
         );
+    }
+
+    private static <E extends Enum<E>> E nullableEnum(Class<E> type, String rawValue) {
+        return rawValue == null || rawValue.isBlank() ? null : Enum.valueOf(type, rawValue);
     }
 
     private static String encodeCursor(MedicalDocument last) {

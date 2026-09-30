@@ -2,12 +2,14 @@ package com.gyote.silvercare.medical_document.domain.repository;
 
 import com.gyote.silvercare.global.status.DocumentStatus;
 import com.gyote.silvercare.medical_document.domain.entity.MedicalDocument;
+import com.gyote.silvercare.medical_document.query.model.MedicalDocumentAiStatusRow;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -83,5 +85,56 @@ public interface MedicalDocumentRepository extends JpaRepository<MedicalDocument
             @Param("cursorCreatedAt") Instant cursorCreatedAt,
             @Param("cursorId") UUID cursorId,
             Pageable pageable
+    );
+
+    /** 문서별 방문일과 최신 AI 설명 작업 상태를 한 번에 조회한다. 분석 전 문서도 포함한다. */
+    @Query(value = """
+            SELECT
+                CAST(d.id AS VARCHAR) AS "documentId",
+                v.visited_on AS "visitedOn",
+                CASE
+                    WHEN latest_analysis.id IS NULL THEN NULL
+                    ELSE COALESCE(
+                        latest_run.status,
+                        CASE latest_analysis.status
+                            WHEN 'RUNNING' THEN 'RUNNING'
+                            WHEN 'FAILED' THEN 'FAILED'
+                            ELSE 'QUEUED'
+                        END
+                    )
+                END AS "jobStatus",
+                latest_explanation.result_status AS "resultStatus",
+                COALESCE(latest_run.retryable, FALSE) AS "retryable"
+            FROM documents d
+            LEFT JOIN visits v ON v.id = d.visit_id
+            LEFT JOIN document_analyses latest_analysis
+                ON latest_analysis.id = (
+                    SELECT da.id
+                    FROM document_analyses da
+                    WHERE da.document_id = d.id
+                    ORDER BY da.created_at DESC, da.id DESC
+                    LIMIT 1
+                )
+            LEFT JOIN ai_runs latest_run
+                ON latest_run.id = (
+                    SELECT ar.id
+                    FROM ai_runs ar
+                    WHERE ar.analysis_id = latest_analysis.id
+                      AND ar.run_type = 'EXPLANATION'
+                    ORDER BY ar.created_at DESC, ar.id DESC
+                    LIMIT 1
+                )
+            LEFT JOIN ai_explanations latest_explanation
+                ON latest_explanation.id = (
+                    SELECT ae.id
+                    FROM ai_explanations ae
+                    WHERE ae.document_id = d.id
+                    ORDER BY ae.version DESC, ae.created_at DESC, ae.id DESC
+                    LIMIT 1
+                )
+            WHERE d.id IN (:documentIds)
+            """, nativeQuery = true)
+    List<MedicalDocumentAiStatusRow> findAiStatusesByDocumentIds(
+            @Param("documentIds") Collection<UUID> documentIds
     );
 }

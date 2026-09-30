@@ -4,6 +4,8 @@ import com.gyote.silvercare.care_relation.command.application.CareRelationComman
 import com.gyote.silvercare.care_relation.domain.CareRelation;
 import com.gyote.silvercare.care_relation.domain.repository.CareRelationRepository;
 import com.gyote.silvercare.global.exception.BusinessException;
+import com.gyote.silvercare.global.status.AiJobStatus;
+import com.gyote.silvercare.global.status.ResultStatus;
 import com.gyote.silvercare.medical_document.command.application.MedicalDocumentCommandService;
 import com.gyote.silvercare.medical_document.domain.entity.MedicalDocument;
 import com.gyote.silvercare.medical_document.domain.MedicalDocumentAccessPolicy;
@@ -26,6 +28,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -36,6 +40,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
 class MedicalDocumentServiceTest {
+
+    private static final LocalDate VISITED_ON = LocalDate.of(2026, 9, 20);
+    private static final Instant AI_CREATED_AT = Instant.parse("2026-09-22T01:00:00Z");
 
     @Autowired
     private UserRepository users;
@@ -64,7 +71,14 @@ class MedicalDocumentServiceTest {
 
     @BeforeEach
     void setUp() {
-        accounts = new UserAccountService(users, patients);
+        execute("""
+                CREATE TABLE IF NOT EXISTS visits (
+                    id UUID PRIMARY KEY,
+                    patient_id UUID NOT NULL,
+                    visited_on DATE NOT NULL
+                )
+                """);
+        accounts =new UserAccountService(users, patients);
         MedicalDocumentAccessPolicy accessPolicy = new MedicalDocumentAccessPolicy(relations, patients);
         queries = new MedicalDocumentQueryService(
                 documents, users, new UserQueryService(users), patients, accessPolicy,
@@ -207,6 +221,32 @@ class MedicalDocumentServiceTest {
         assertThat(queries.list(caregiver, patientId, null, null, null).items()).isEmpty();
     }
 
+    @Test
+    void documentWithoutAnalysisHasVisitDateAndNoAiStatus() {
+        MedicalDocument document = saveDocumentWithVisit();
+
+        assertAiStatus(document, null, null, false);
+    }
+
+    @Test
+    void failedRunExposesFailedStatusAndRetryable() {
+        MedicalDocument document = saveDocumentWithVisit();
+        UUID analysisId = saveAnalysis(document.getId(), "SUCCEEDED");
+        saveExplanationRun(analysisId, "FAILED", true);
+
+        assertAiStatus(document, AiJobStatus.FAILED, null, true);
+    }
+
+    @Test
+    void completedExplanationExposesSucceededAndResultStatus() {
+        MedicalDocument document = saveDocumentWithVisit();
+        UUID analysisId = saveAnalysis(document.getId(), "SUCCEEDED");
+        UUID runId = saveExplanationRun(analysisId, "SUCCEEDED", false);
+        saveExplanation(document.getId(), runId, "COMPLETE");
+
+        assertAiStatus(document, AiJobStatus.SUCCEEDED, ResultStatus.COMPLETE, false);
+    }
+
     private User createPatient(String kakaoId, String name) {
         return createUser(kakaoId, name, UserRole.PATIENT);
     }
@@ -237,6 +277,70 @@ class MedicalDocumentServiceTest {
         em.flush();
         em.clear();
         return saved;
+    }
+
+    /** 문서를 저장하고, 그 문서의 visitId로 방문일이 고정된 visits 행을 넣습니다. */
+    private MedicalDocument saveDocumentWithVisit() {
+        MedicalDocument document = saveDocument(patientId, patient);
+        execute("INSERT INTO visits (id, patient_id, visited_on) VALUES (:id, :patientId, :visitedOn)",
+                "id", document.getVisitId(), "patientId", patientId, "visitedOn", VISITED_ON);
+        return document;
+    }
+
+    private UUID saveAnalysis(UUID documentId, String status) {
+        UUID analysisId = UUID.randomUUID();
+        execute("""
+                INSERT INTO document_analyses (id, document_id, parser_version, status, created_at)
+                VALUES (:id, :documentId, 'test-parser', :status, :createdAt)
+                """,
+                "id", analysisId, "documentId", documentId, "status", status, "createdAt", AI_CREATED_AT);
+        return analysisId;
+    }
+
+    private UUID saveExplanationRun(UUID analysisId, String status, boolean retryable) {
+        UUID runId = UUID.randomUUID();
+        execute("""
+                INSERT INTO ai_runs
+                    (id, analysis_id, run_type, model_name, prompt_version, status, retryable, retry_count, created_at)
+                VALUES (:id, :analysisId, 'EXPLANATION', 'test-model', 'v1', :status, :retryable, 0, :createdAt)
+                """,
+                "id", runId, "analysisId", analysisId, "status", status,
+                "retryable", retryable, "createdAt", AI_CREATED_AT);
+        return runId;
+    }
+
+    private void saveExplanation(UUID documentId, UUID runId, String resultStatus) {
+        execute("""
+                INSERT INTO ai_explanations (id, document_id, ai_run_id, version, result_status, created_at)
+                VALUES (:id, :documentId, :runId, 1, :resultStatus, :createdAt)
+                """,
+                "id", UUID.randomUUID(), "documentId", documentId, "runId", runId,
+                "resultStatus", resultStatus, "createdAt", AI_CREATED_AT);
+    }
+
+    /** 목록 항목과 상세 둘 다 같은 방문일·AI 상태를 가지는지 확인합니다. */
+    private void assertAiStatus(MedicalDocument document, AiJobStatus jobStatus,
+                                ResultStatus resultStatus, boolean retryable) {
+        MedicalDocumentView listItem = queries.list(patient, null, null, null, null).items().stream()
+                .filter(item -> item.documentId().equals(document.getId()))
+                .findFirst().orElseThrow();
+        MedicalDocumentView detail = queries.get(patient, document.getId());
+
+        for (MedicalDocumentView view : List.of(listItem, detail)) {
+            assertThat(view.visitedOn()).isEqualTo(VISITED_ON);
+            assertThat(view.latestAiJobStatus()).isEqualTo(jobStatus);
+            assertThat(view.resultStatus()).isEqualTo(resultStatus);
+            assertThat(view.retryable()).isEqualTo(retryable);
+        }
+    }
+
+    /** 테스트 SQL을 named parameter와 함께 실행합니다. */
+    private void execute(String sql, Object... parameters) {
+        var query = em.getEntityManager().createNativeQuery(sql);
+        for (int i = 0; i < parameters.length; i += 2) {
+            query.setParameter(String.valueOf(parameters[i]), parameters[i + 1]);
+        }
+        query.executeUpdate();
     }
 
     private static List<UUID> idsOf(MedicalDocumentPage page) {
