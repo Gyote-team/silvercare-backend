@@ -1,6 +1,5 @@
 package com.gyote.silvercare.global.config;
 
-import com.gyote.silvercare.global.auth.oauth.KakaoOAuth2UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
@@ -15,14 +14,6 @@ class SecurityConfigTest {
                 new OAuth2Error("access_denied")
         );
         assertThat(SecurityConfig.loginError(denied)).isEqualTo("canceled");
-    }
-
-    @Test
-    void withdrawnAccountMapsToWithdrawn() {
-        OAuth2AuthenticationException withdrawn = new OAuth2AuthenticationException(
-                new OAuth2Error(KakaoOAuth2UserService.WITHDRAWN_ACCOUNT)
-        );
-        assertThat(SecurityConfig.loginError(withdrawn)).isEqualTo("withdrawn");
     }
 
     @Test

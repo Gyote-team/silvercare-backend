@@ -135,9 +135,13 @@ public class User {
         return deletedAt;
     }
 
-    /** 탈퇴 계정으로 전환하고 탈퇴 시각을 기록한다. */
+    /**
+     * 탈퇴 계정으로 전환하고 탈퇴 시각을 기록한다.
+     * 같은 카카오 계정으로 새로 가입할 수 있도록 kakao_id 고유 제약에서 이 행을 풀어 준다.
+     */
     public void withdraw(Instant withdrawnAt) {
         this.status = UserStatus.WITHDRAWN;
         this.deletedAt = withdrawnAt;
+        this.kakaoId = null;
     }
 }

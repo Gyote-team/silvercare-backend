@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -46,7 +47,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (current != null && current.isAuthenticated()
                 && !(current.getPrincipal() instanceof String)) {
             if (current.getPrincipal() instanceof OAuth2User oauthUser
-                    && isActive(oauthUser.getAttribute("id"))) {
+                    && activeUser(oauthUser.getAttribute("id"), oauthUser.getAttribute("userId")).isPresent()) {
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -59,9 +60,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
         try {
-            User user = users.findByKakaoId(jwt.kakaoId(token)).orElse(null);
-            if (user != null && user.getStatus() == UserStatus.ACTIVE) {
-                SecurityContextHolder.getContext().setAuthentication(principal(user));
+            Optional<User> user = activeUser(jwt.kakaoId(token), jwt.userId(token));
+            if (user.isPresent()) {
+                SecurityContextHolder.getContext().setAuthentication(principal(user.get()));
             } else {
                 cookies.clear(response);
             }
@@ -71,13 +72,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private boolean isActive(Object kakaoId) {
-        if (kakaoId == null) {
-            return false;
+    /**
+     * 탈퇴 후 같은 카카오 계정으로 재가입할 수 있으므로, 카카오 id만으로는 옛 계정의 세션·토큰을 구분할 수 없다.
+     * 카카오 id와 사용자 id가 모두 현재 활성 계정과 일치할 때만 인증한다.
+     */
+    private Optional<User> activeUser(Object kakaoId, Object userId) {
+        if (kakaoId == null || userId == null) {
+            return Optional.empty();
         }
         return users.findByKakaoId(String.valueOf(kakaoId))
-                .map(user -> user.getStatus() == UserStatus.ACTIVE)
-                .orElse(false);
+                .filter(user -> user.getStatus() == UserStatus.ACTIVE)
+                .filter(user -> user.getId().toString().equals(String.valueOf(userId)));
     }
 
     public static OAuth2AuthenticationToken principal(User user) {

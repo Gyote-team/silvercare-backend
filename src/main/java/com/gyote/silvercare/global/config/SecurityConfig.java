@@ -121,9 +121,6 @@ public class SecurityConfig {
                 if ("access_denied".equals(code)) {
                     return "canceled";
                 }
-                if (KakaoOAuth2UserService.WITHDRAWN_ACCOUNT.equals(code)) {
-                    return "withdrawn";
-                }
             }
             current = current.getCause();
         }

@@ -6,10 +6,11 @@ import com.gyote.silvercare.user.domain.UserStatus;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.global.exception.BusinessException;
-import com.gyote.silvercare.user.error.UserErrorCode;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -88,14 +89,35 @@ class UserAccountServiceTest {
     }
 
     @Test
-    void withdrawnDemoUserCannotLogInAgain() {
+    void withdrawnKakaoUserRegistersAgainAsNewAccount() {
+        UserAccountService accounts = new UserAccountService(users, patients);
+        User old = accounts.chooseRole(accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(), UserRole.PATIENT);
+        String oldInviteCode = accounts.patientInviteCode(old);
+        old.withdraw(Instant.now());
+
+        User rejoined = accounts.loginOrRegister("kakao-soonja", "김순자");
+
+        assertThat(rejoined.getId()).isNotEqualTo(old.getId());
+        assertThat(rejoined.getRole()).isEqualTo(UserRole.PENDING);
+        assertThat(rejoined.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(old.getStatus()).isEqualTo(UserStatus.WITHDRAWN);
+        assertThat(old.getKakaoId()).isNull();
+        assertThat(users.count()).isEqualTo(2);
+
+        User rejoinedPatient = accounts.chooseRole("kakao-soonja", UserRole.PATIENT);
+        assertThat(accounts.patientInviteCode(rejoinedPatient)).isNotEqualTo(oldInviteCode);
+    }
+
+    @Test
+    void withdrawnDemoUserIsRecreatedAsNewAccount() {
         UserAccountService accounts = new UserAccountService(users, patients);
         User demo = accounts.ensureDemoUser(UserRole.PATIENT);
-        demo.withdraw(java.time.Instant.now());
+        demo.withdraw(Instant.now());
 
-        assertThatThrownBy(() -> accounts.ensureDemoUser(UserRole.PATIENT))
-                .isInstanceOf(BusinessException.class)
-                .extracting(exception -> ((BusinessException) exception).getErrorCode())
-                .isEqualTo(UserErrorCode.USER_ALREADY_WITHDRAWN);
+        User recreated = accounts.ensureDemoUser(UserRole.PATIENT);
+
+        assertThat(recreated.getId()).isNotEqualTo(demo.getId());
+        assertThat(recreated.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(accounts.patientInviteCode(recreated)).isNotBlank();
     }
 }
