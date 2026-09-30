@@ -49,9 +49,9 @@ public class CareRelationQueryService {
         List<CareRelation> rows = me.getRole() == UserRole.PATIENT
                 ? relations.findByPatientIdOrderByRequestedAtDesc(patientIdFor(me))
                 : relations.findByCaregiverIdOrderByRequestedAtDesc(me.getId());
-        Map<UUID, String> namesById = users.findAllById(counterpartIds(rows, me)).stream()
-                .collect(Collectors.toMap(User::getId, User::getName));
-        return rows.stream().map(row -> toView(row, me, namesById)).toList();
+        Map<UUID, User> usersById = users.findAllById(counterpartIds(rows, me)).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+        return rows.stream().map(row -> toView(row, me, usersById)).toList();
     }
 
     private Set<UUID> counterpartIds(List<CareRelation> rows, User me) {
@@ -61,13 +61,23 @@ public class CareRelationQueryService {
                 .collect(Collectors.toSet());
     }
 
-    private CareRelationView toView(CareRelation row, User me, Map<UUID, String> namesById) {
+    private CareRelationView toView(CareRelation row, User me, Map<UUID, User> usersById) {
         boolean patientSide = me.getRole() == UserRole.PATIENT;
         var otherId = patientSide ? row.getCaregiverId() : patientUserId(row);
-        String name = namesById.getOrDefault(otherId, "이용자");
+        User counterpart = usersById.get(otherId);
         boolean requested = row.getStatus() == CareRelationStatus.REQUESTED;
         boolean active = row.getStatus() == CareRelationStatus.ACTIVE;
-        return new CareRelationView(row.getId(), row.getPatientId(), name, statusLabel(row.getStatus()), row.getStatus(),
+        return new CareRelationView(
+                row.getId(),
+                row.getId(),
+                row.getPatientId(),
+                counterpart == null ? "이용자" : counterpart.getName(),
+                counterpart == null ? null : counterpart.getRole(),
+                statusLabel(row.getStatus()),
+                row.getStatus(),
+                row.getRequestedAt(),
+                row.getAcceptedAt(),
+                row.getStatus() == CareRelationStatus.REVOKED ? row.getEndedAt() : null,
                 patientSide && requested, patientSide && requested, !patientSide && requested, active);
     }
 

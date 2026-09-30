@@ -13,10 +13,15 @@ public class CareRelationResponseMapper {
     public CareRelationResponse toResponse(CareRelationView view) {
         return new CareRelationResponse(
                 view.id(),
+                view.relationId(),
                 view.patientId(),
                 view.counterpartName(),
+                view.counterpartRole(),
                 view.statusLabel(),
                 view.status(),
+                view.requestedAt(),
+                view.acceptedAt(),
+                view.revokedAt(),
                 view.canAccept(),
                 view.canReject(),
                 view.canCancel(),
