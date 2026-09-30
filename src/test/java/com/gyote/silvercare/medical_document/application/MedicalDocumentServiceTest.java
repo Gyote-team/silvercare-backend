@@ -204,7 +204,7 @@ class MedicalDocumentServiceTest {
     }
 
     private void connect(User caregiver, User patient) {
-        CareRelationCommandService cares = new CareRelationCommandService(relations, patients);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
         CareRelation requested = cares.request(caregiver, accounts.patientInviteCode(patient));
         cares.accept(patient, requested.getId());
     }
