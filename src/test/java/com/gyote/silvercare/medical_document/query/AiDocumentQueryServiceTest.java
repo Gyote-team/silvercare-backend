@@ -85,7 +85,7 @@ class AiDocumentQueryServiceTest {
         );
         patientProfile = patients.findByUserId(patient.getId()).orElseThrow();
 
-        CareRelationCommandService careCommands = new CareRelationCommandService(relations, patients);
+        CareRelationCommandService careCommands = new CareRelationCommandService(relations, patients, users);
         CareRelation requested = careCommands.request(caregiver, accounts.patientInviteCode(patient));
         careCommands.accept(patient, requested.getId());
 

@@ -8,6 +8,9 @@ import com.gyote.silvercare.patient.domain.Patient;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
+import com.gyote.silvercare.user.domain.UserStatus;
+import com.gyote.silvercare.user.domain.repository.UserRepository;
+import com.gyote.silvercare.user.error.UserErrorCode;
 import com.gyote.silvercare.care_relation.error.CareRelationErrorCode;
 import com.gyote.silvercare.global.exception.BusinessException;
 import org.springframework.stereotype.Service;
@@ -15,7 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /** State-changing care-relation use cases only. */
 @Service
@@ -27,13 +33,16 @@ public class CareRelationCommandService {
 
     private final CareRelationRepository relations;
     private final PatientRepository patients;
+    private final UserRepository users;
 
     public CareRelationCommandService(
             CareRelationRepository relations,
-            PatientRepository patients
+            PatientRepository patients,
+            UserRepository users
     ) {
         this.relations = relations;
         this.patients = patients;
+        this.users = users;
     }
 
     @Transactional
@@ -45,6 +54,13 @@ public class CareRelationCommandService {
                 .orElseThrow(() -> new BusinessException(CareRelationErrorCode.INVITE_CODE_NOT_FOUND));
         if (patient.getUserId().equals(caregiver.getId())) {
             throw new BusinessException(CareRelationErrorCode.SELF_RELATION_NOT_ALLOWED);
+        }
+        Map<UUID, User> locked = lockUsers(patient.getUserId(), caregiver.getId());
+        if (!isActive(locked.get(patient.getUserId()))) {
+            throw new BusinessException(CareRelationErrorCode.INVITE_CODE_NOT_FOUND);
+        }
+        if (!isActive(locked.get(caregiver.getId()))) {
+            throw new BusinessException(UserErrorCode.USER_ALREADY_WITHDRAWN);
         }
         if (relations.findFirstByPatientIdAndCaregiverIdAndStatusIn(
                 patient.getId(), caregiver.getId(), ALIVE).isPresent()) {
@@ -59,6 +75,12 @@ public class CareRelationCommandService {
 
     @Transactional
     public CareRelation accept(User patient, UUID relationId) {
+        CareRelationRepository.Participants participants = relations.findParticipantsById(relationId)
+                .orElseThrow(() -> new BusinessException(CareRelationErrorCode.RELATION_NOT_FOUND));
+        Map<UUID, User> locked = lockUsers(patientUserId(participants.getPatientId()), participants.getCaregiverId());
+        if (!locked.values().stream().allMatch(this::isActive) || locked.size() != 2) {
+            throw new BusinessException(CareRelationErrorCode.INVALID_RELATION_STATE);
+        }
         CareRelation relation = requireOwned(patient, relationId, true);
         if (relation.getStatus() != CareRelationStatus.REQUESTED) {
             throw new BusinessException(CareRelationErrorCode.INVALID_RELATION_STATE);
@@ -122,8 +144,25 @@ public class CareRelationCommandService {
         return relation;
     }
 
+    /**
+     * 관계를 만들거나 활성화하기 전에 당사자 사용자 행을 잠근다.
+     * 탈퇴도 같은 사용자 행을 잠그므로, 잠금 이후에 읽은 상태와 관계는 탈퇴와 겹치지 않는다.
+     */
+    private Map<UUID, User> lockUsers(UUID first, UUID second) {
+        return users.findAllByIdForUpdate(List.of(first, second)).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+    }
+
+    private boolean isActive(User user) {
+        return user != null && user.getStatus() == UserStatus.ACTIVE;
+    }
+
     private UUID patientUserId(CareRelation relation) {
-        return patients.findById(relation.getPatientId())
+        return patientUserId(relation.getPatientId());
+    }
+
+    private UUID patientUserId(UUID patientId) {
+        return patients.findById(patientId)
                 .map(Patient::getUserId)
                 .orElseThrow(() -> new BusinessException(CareRelationErrorCode.RELATION_NOT_FOUND));
     }

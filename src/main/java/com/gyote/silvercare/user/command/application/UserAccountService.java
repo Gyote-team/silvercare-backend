@@ -105,7 +105,7 @@ public class UserAccountService {
         if (role != UserRole.PATIENT && role != UserRole.CAREGIVER) {
             throw new BusinessException(UserErrorCode.INVALID_ROLE);
         }
-        String kakaoId = role == UserRole.CAREGIVER ? "demo-caregiver" : "demo-patient";
+        String kakaoId = User.DEMO_KAKAO_ID_PREFIX + (role == UserRole.CAREGIVER ? "caregiver" : "patient");
         String name = role == UserRole.CAREGIVER ? "김민지" : "김순자";
         User user = users.findByKakaoId(kakaoId).orElseGet(() -> {
             User created = new User();

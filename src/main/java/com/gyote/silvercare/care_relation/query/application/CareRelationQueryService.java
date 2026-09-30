@@ -68,7 +68,8 @@ public class CareRelationQueryService {
         boolean requested = row.getStatus() == CareRelationStatus.REQUESTED;
         boolean active = row.getStatus() == CareRelationStatus.ACTIVE;
         return new CareRelationView(row.getId(), row.getPatientId(), name, statusLabel(row.getStatus()), row.getStatus(),
-                patientSide && requested, patientSide && requested, !patientSide && requested, active);
+                patientSide && requested, patientSide && requested, !patientSide && requested, active,
+                row.getAcceptedAt());
     }
 
     private static String statusLabel(CareRelationStatus status) {

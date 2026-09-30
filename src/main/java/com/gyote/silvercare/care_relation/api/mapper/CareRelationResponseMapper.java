@@ -20,7 +20,8 @@ public class CareRelationResponseMapper {
                 view.canAccept(),
                 view.canReject(),
                 view.canCancel(),
-                view.canRevoke()
+                view.canRevoke(),
+                view.acceptedAt()
         );
     }
 
