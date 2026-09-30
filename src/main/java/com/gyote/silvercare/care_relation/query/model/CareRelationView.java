@@ -7,6 +7,7 @@ import java.util.UUID;
 /** Query application layer에서 사용하는 읽기 전용 모델입니다. */
 public record CareRelationView(
         UUID id,
+        UUID patientId,
         String counterpartName,
         String statusLabel,
         CareRelationStatus status,
