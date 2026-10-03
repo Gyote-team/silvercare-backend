@@ -95,10 +95,10 @@ public class DocumentAnalysis {
         retryCount++;
     }
 
-    /** 분석을 최종 실패로 기록합니다. 오류 코드·실패 단계·메시지·완료 시각을 남기고 더 이상 재시도하지 않습니다. */
-    public void fail(String errorCode, String failedStep, String message, Instant now) {
+    /** 분석을 최종 실패로 기록합니다. 오류 코드·실패 단계·메시지·완료 시각과, 나중에 수동 재시도가 가능한지(retryable)를 남깁니다. */
+    public void fail(String errorCode, String failedStep, String message, boolean retryable, Instant now) {
         status = DocumentAnalysisStatus.FAILED;
-        retryable = false;
+        this.retryable = retryable;
         this.errorCode = errorCode;
         this.failedStep = failedStep;
         errorMessage = message;

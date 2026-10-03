@@ -70,6 +70,14 @@ silvercare:
       max-image-pixels: 40000000
   storage:
     local-root: ${STORAGE_LOCAL_ROOT:./data/object-storage}
+  ai:
+    base-url: ${AI_BASE_URL:}
+    internal-token: ${AI_INTERNAL_TOKEN:}
+    parser-version: v1
+    max-attempts: 3
+    retry-backoff: 500ms
+    connect-timeout: 2s
+    read-timeout: 5s
 
 jwt:
   secret: ${JWT_SECRET:}

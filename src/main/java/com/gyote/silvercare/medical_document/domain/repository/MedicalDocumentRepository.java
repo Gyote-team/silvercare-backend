@@ -5,6 +5,7 @@ import com.gyote.silvercare.medical_document.domain.entity.MedicalDocument;
 import com.gyote.silvercare.medical_document.query.model.MedicalDocumentAiStatusRow;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -34,6 +35,21 @@ public interface MedicalDocumentRepository extends JpaRepository<MedicalDocument
               AND v.deleted_at IS NULL
             """, nativeQuery = true)
     Optional<String> findPatientIdByVisitId(@Param("visitId") UUID visitId);
+
+    /**
+     * UPLOADED 상태인 문서만 FAILED로 바꾸고 바뀐 행 수(0 또는 1)를 반환합니다.
+     * 그 사이 삭제된 문서를 FAILED로 덮어쓰지 않도록 조건을 DB에서 확인합니다.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            update MedicalDocument d
+            set d.status = com.gyote.silvercare.global.status.DocumentStatus.FAILED,
+                d.statusChangedAt = :now,
+                d.updatedAt = :now
+            where d.id = :id
+              and d.status = com.gyote.silvercare.global.status.DocumentStatus.UPLOADED
+            """)
+    int updateStatusToFailedIfUploaded(@Param("id") UUID id, @Param("now") Instant now);
 
     /** 첫 페이지 (방문 필터 없음) */
     @Query("""

@@ -38,14 +38,23 @@ class DocumentAnalysisTest {
     void failRecordsErrorFields() {
         DocumentAnalysis analysis = queuedAnalysis();
 
-        analysis.fail("AI_TIMEOUT", "ANALYZE_REQUEST", "AI 서버 응답 시간 초과", NOW);
+        analysis.fail("AI_TIMEOUT", "ANALYSIS_REQUEST", "AI 서버 응답 시간 초과", true, NOW);
 
         assertThat(analysis.getStatus()).isEqualTo(DocumentAnalysisStatus.FAILED);
-        assertThat(analysis.isRetryable()).isFalse();
+        assertThat(analysis.isRetryable()).isTrue();
         assertThat(analysis.getErrorCode()).isEqualTo("AI_TIMEOUT");
-        assertThat(analysis.getFailedStep()).isEqualTo("ANALYZE_REQUEST");
+        assertThat(analysis.getFailedStep()).isEqualTo("ANALYSIS_REQUEST");
         assertThat(analysis.getErrorMessage()).isEqualTo("AI 서버 응답 시간 초과");
         assertThat(analysis.getCompletedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    void failWithNonRetryableErrorIsNotRetryable() {
+        DocumentAnalysis analysis = queuedAnalysis();
+
+        analysis.fail("INTERNAL_AUTH_FAILED", "ANALYSIS_REQUEST", "내부 인증 실패", false, NOW);
+
+        assertThat(analysis.isRetryable()).isFalse();
     }
 
     private DocumentAnalysis queuedAnalysis() {

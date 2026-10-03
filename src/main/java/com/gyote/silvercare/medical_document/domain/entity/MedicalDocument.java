@@ -179,16 +179,6 @@ public class MedicalDocument {
         statusChangedAt = now;
     }
 
-    /** 분석이 최종 실패하면 문서를 FAILED로 바꿉니다. 이미 삭제된 문서는 바꾸지 않습니다. */
-    public void markFailed(Instant now) {
-        if (isDeleted()) {
-            return;
-        }
-        status = DocumentStatus.FAILED;
-        statusChangedAt = now;
-        updatedAt = now;
-    }
-
     /** 소프트 삭제된 문서인지 반환합니다. */
     public boolean isDeleted() {
         return status == DocumentStatus.DELETED;
