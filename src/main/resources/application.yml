@@ -57,6 +57,13 @@ logging:
 silvercare:
   demo-login: ${DEMO_LOGIN:false}
   frontend-origin: ${FRONTEND_ORIGIN:http://localhost:3000}
+  document:
+    upload:
+      max-bytes: 20971520
+      max-pdf-pages: 30
+      max-image-pixels: 40000000
+  storage:
+    local-root: ${STORAGE_LOCAL_ROOT:./data/object-storage}
 
 jwt:
   secret: ${JWT_SECRET:}
