@@ -14,7 +14,12 @@ public enum MedicalDocumentErrorCode implements ErrorCode {
     UNSUPPORTED_FILE_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "MEDICAL_DOCUMENT_008", "JPEG, PNG, PDF 파일만 업로드할 수 있습니다."),
     FILE_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE, "MEDICAL_DOCUMENT_009", "파일 크기가 허용 한도를 넘었습니다."),
     PDF_PAGE_LIMIT_EXCEEDED(HttpStatus.PAYLOAD_TOO_LARGE, "MEDICAL_DOCUMENT_010", "PDF 페이지 수가 허용 한도를 넘었습니다."),
-    IMAGE_RESOLUTION_EXCEEDED(HttpStatus.PAYLOAD_TOO_LARGE, "MEDICAL_DOCUMENT_011", "이미지 해상도가 허용 한도를 넘었습니다.");
+    IMAGE_RESOLUTION_EXCEEDED(HttpStatus.PAYLOAD_TOO_LARGE, "MEDICAL_DOCUMENT_011", "이미지 해상도가 허용 한도를 넘었습니다."),
+    VISIT_NOT_FOUND(HttpStatus.NOT_FOUND, "MEDICAL_DOCUMENT_012", "방문을 찾을 수 없습니다."),
+    INVALID_IDEMPOTENCY_KEY(HttpStatus.BAD_REQUEST, "MEDICAL_DOCUMENT_013", "Idempotency-Key는 1자 이상 100자 이하여야 합니다."),
+    IDEMPOTENCY_KEY_CONFLICT(HttpStatus.CONFLICT, "MEDICAL_DOCUMENT_014", "같은 Idempotency-Key가 다른 방문의 업로드에 이미 사용됐습니다."),
+    INVALID_DOC_TYPE(HttpStatus.BAD_REQUEST, "MEDICAL_DOCUMENT_015", "문서 유형 값이 올바르지 않습니다."),
+    STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "MEDICAL_DOCUMENT_016", "파일 저장소를 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.");
 
     private final HttpStatus status;
     private final String code;

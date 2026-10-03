@@ -15,13 +15,25 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * 의료 문서 조회용 Repository입니다.
+ * 의료 문서 Repository입니다. 문서 목록·상세 조회와 업로드에 필요한 멱등 키 조회·방문의 환자 조회를 담당합니다.
  * 목록은 (createdAt, id) 내림차순 커서 방식이며, excluded에는 DocumentStatus.DELETED를 넘깁니다.
  * visitId 필터 유무에 따라 메서드를 나눈 이유는 null 파라미터 타입 추론 문제를 피하기 위해서입니다.
  */
 public interface MedicalDocumentRepository extends JpaRepository<MedicalDocument, UUID> {
 
     Optional<MedicalDocument> findByIdAndStatusNot(UUID id, DocumentStatus excluded);
+
+    /** 업로드한 사용자와 Idempotency-Key가 같은 문서를 찾아 반환합니다. 삭제된 문서도 포함합니다. */
+    Optional<MedicalDocument> findByUploaderUserIdAndIdempotencyKey(UUID uploaderUserId, String idempotencyKey);
+
+    /** 삭제되지 않은 방문의 patient_id를 문자열로 반환합니다. 방문이 없거나 삭제됐으면 빈 Optional입니다. */
+    @Query(value = """
+            SELECT CAST(v.patient_id AS VARCHAR)
+            FROM visits v
+            WHERE v.id = :visitId
+              AND v.deleted_at IS NULL
+            """, nativeQuery = true)
+    Optional<String> findPatientIdByVisitId(@Param("visitId") UUID visitId);
 
     /** 첫 페이지 (방문 필터 없음) */
     @Query("""

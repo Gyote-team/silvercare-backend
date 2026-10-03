@@ -5,7 +5,8 @@ import org.springframework.http.HttpStatus;
 public enum GlobalErrorCode implements ErrorCode {
     DEMO_LOGIN_DISABLED(HttpStatus.FORBIDDEN, "GLOBAL_001", "데모 로그인이 비활성화되어 있습니다."),
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "GLOBAL_002", "요청 값이 올바르지 않습니다."),
-    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "GLOBAL_003", "서버 오류가 발생했습니다.");
+    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "GLOBAL_003", "서버 오류가 발생했습니다."),
+    FILE_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE, "GLOBAL_004", "업로드할 수 있는 크기를 넘었습니다.");
 
     private final HttpStatus status;
     private final String code;

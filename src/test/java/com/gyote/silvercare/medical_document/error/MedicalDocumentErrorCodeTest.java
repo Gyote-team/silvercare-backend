@@ -23,7 +23,12 @@ class MedicalDocumentErrorCodeTest {
             "UNSUPPORTED_FILE_TYPE,     415, MEDICAL_DOCUMENT_008",
             "FILE_TOO_LARGE,            413, MEDICAL_DOCUMENT_009",
             "PDF_PAGE_LIMIT_EXCEEDED,   413, MEDICAL_DOCUMENT_010",
-            "IMAGE_RESOLUTION_EXCEEDED, 413, MEDICAL_DOCUMENT_011"
+            "IMAGE_RESOLUTION_EXCEEDED, 413, MEDICAL_DOCUMENT_011",
+            "VISIT_NOT_FOUND,           404, MEDICAL_DOCUMENT_012",
+            "INVALID_IDEMPOTENCY_KEY,   400, MEDICAL_DOCUMENT_013",
+            "IDEMPOTENCY_KEY_CONFLICT,  409, MEDICAL_DOCUMENT_014",
+            "INVALID_DOC_TYPE,          400, MEDICAL_DOCUMENT_015",
+            "STORAGE_UNAVAILABLE,       503, MEDICAL_DOCUMENT_016"
     })
     void businessExceptionKeepsMedicalDocumentStatusAndCode(
             MedicalDocumentErrorCode errorCode, int expectedStatus, String expectedCode
