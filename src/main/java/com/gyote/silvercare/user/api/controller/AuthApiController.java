@@ -95,7 +95,7 @@ public class AuthApiController {
         if (!demoLogin) {
             throw new BusinessException(GlobalErrorCode.DEMO_LOGIN_DISABLED);
         }
-        User user = accounts.ensureDemoUser(request.toUserRole());
+        User user = accounts.ensureDemoUser(request.toDemoAccount());
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(JwtAuthFilter.principal(user));
         SecurityContextHolder.setContext(context);

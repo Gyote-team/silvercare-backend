@@ -4,6 +4,7 @@ import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.UserStatus;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
+import com.gyote.silvercare.user.api.dto.request.DemoLoginRequest.DemoAccount;
 import com.gyote.silvercare.patient.domain.Patient;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.global.exception.BusinessException;
@@ -123,5 +124,21 @@ public class UserAccountService {
             ensurePatientProfile(user);
         }
         return user;
+    }
+
+    /**
+     * 연결 관계가 없는 독립 시연 계정을 준비한다.
+     * 모두 보호자 시작 방식으로 생성하되, 필요할 때 본인 건강 프로필을 추가할 수 있다.
+     */
+    @Transactional
+    public User ensureDemoUser(DemoAccount account) {
+        return users.findByKakaoId(account.kakaoId()).orElseGet(() -> {
+            User created = new User();
+            created.setKakaoId(account.kakaoId());
+            created.setName(account.displayName());
+            created.setRole(UserRole.CAREGIVER);
+            created.setStatus(UserStatus.ACTIVE);
+            return users.save(created);
+        });
     }
 }
