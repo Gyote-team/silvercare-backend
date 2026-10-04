@@ -1,6 +1,7 @@
 package com.gyote.silvercare.care_relation.api.dto.response;
 
 import com.gyote.silvercare.care_relation.domain.CareRelationStatus;
+import com.gyote.silvercare.user.domain.UserRole;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -12,7 +13,9 @@ import java.util.UUID;
 public record CareRelationResponse(
         UUID id,
         UUID patientId,
+        UUID caregiverId,
         String counterpartName,
+        UserRole counterpartRole,
         String statusLabel,
         CareRelationStatus status,
         boolean canAccept,
