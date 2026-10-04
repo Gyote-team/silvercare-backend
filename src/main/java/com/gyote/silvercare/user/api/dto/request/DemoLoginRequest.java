@@ -31,7 +31,8 @@ public class DemoLoginRequest {
     public enum DemoAccount {
         MINJI("demo-multirole-minji", "김민지"),
         SOONJA("demo-multirole-soonja", "김순자"),
-        HWANWOO("demo-multirole-hwanwoo", "최환우");
+        YOUNGSOO("demo-multirole-youngsoo", "박영수"),
+        JIEUN("demo-multirole-jieun", "이지은");
 
         private final String kakaoIdSuffix;
         private final String displayName;
