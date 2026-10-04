@@ -58,9 +58,9 @@ public class UserAccountService {
             throw new BusinessException(UserErrorCode.ROLE_ALREADY_SELECTED);
         }
         user.setRole(role);
-        if (role == UserRole.PATIENT) {
-            ensurePatientProfile(user);
-        }
+        // 시작 방식을 무엇으로 골라도 모든 계정은 본인 건강 프로필을 갖는다.
+        // 역할 값은 기존 가입 흐름의 호환용이며, 개인/보호자 권한을 고정하지 않는다.
+        ensurePatientProfile(user);
         return user;
     }
 
@@ -120,9 +120,7 @@ public class UserAccountService {
         if (user.getRole() == UserRole.PENDING) {
             user.setRole(role);
         }
-        if (role == UserRole.PATIENT) {
-            ensurePatientProfile(user);
-        }
+        ensurePatientProfile(user);
         return user;
     }
 
@@ -132,7 +130,7 @@ public class UserAccountService {
      */
     @Transactional
     public User ensureDemoUser(DemoAccount account) {
-        return users.findByKakaoId(account.kakaoId()).orElseGet(() -> {
+        User user = users.findByKakaoId(account.kakaoId()).orElseGet(() -> {
             User created = new User();
             created.setKakaoId(account.kakaoId());
             created.setName(account.displayName());
@@ -140,5 +138,7 @@ public class UserAccountService {
             created.setStatus(UserStatus.ACTIVE);
             return users.save(created);
         });
+        ensurePatientProfile(user);
+        return user;
     }
 }

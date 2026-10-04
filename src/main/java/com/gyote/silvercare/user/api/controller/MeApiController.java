@@ -21,7 +21,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -50,13 +49,6 @@ public class MeApiController {
 
     @GetMapping("/api/me")
     public MeResponse me(@AuthenticationPrincipal OAuth2User principal) {
-        User user = users.requireByKakaoId(kakaoId(principal));
-        return responseFor(user);
-    }
-
-    /** 보호자 계정도 본인 건강관리용 개인 프로필과 초대 코드를 만들 수 있다. */
-    @PostMapping("/api/me/patient-profile")
-    public MeResponse createPatientProfile(@AuthenticationPrincipal OAuth2User principal) {
         User user = users.requireByKakaoId(kakaoId(principal));
         accounts.ensurePatientProfile(user);
         return responseFor(user);
