@@ -65,9 +65,6 @@ public class UserAccountService {
 
     @Transactional
     public Patient ensurePatientProfile(User user) {
-        if (user.getRole() != UserRole.PATIENT) {
-            throw new BusinessException(UserErrorCode.INVALID_ROLE);
-        }
         return patients.findByUserId(user.getId()).orElseGet(() -> {
             Patient patient = new Patient();
             patient.setUserId(user.getId());
@@ -78,12 +75,15 @@ public class UserAccountService {
 
     @Transactional(readOnly = true)
     public String patientInviteCode(User user) {
-        if (user.getRole() != UserRole.PATIENT) {
-            return null;
-        }
         return patients.findByUserId(user.getId())
                 .map(Patient::getInviteCode)
                 .orElse(null);
+    }
+
+    /** Returns the user's optional personal health profile without creating one. */
+    @Transactional(readOnly = true)
+    public Patient patientProfile(User user) {
+        return patients.findByUserId(user.getId()).orElse(null);
     }
 
     private String newInviteCode() {

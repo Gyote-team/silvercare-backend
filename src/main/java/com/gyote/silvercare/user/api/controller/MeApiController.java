@@ -8,7 +8,7 @@ import com.gyote.silvercare.user.command.application.UserWithdrawalService;
 import com.gyote.silvercare.user.query.application.UserQueryService;
 import com.gyote.silvercare.user.api.dto.response.MeResponse;
 import com.gyote.silvercare.user.domain.User;
-import com.gyote.silvercare.user.domain.UserRole;
+import com.gyote.silvercare.user.command.application.UserAccountService;
 import com.gyote.silvercare.patient.domain.Patient;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,6 +21,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -31,23 +32,34 @@ public class MeApiController {
     private final PatientRepository patients;
     private final UserWithdrawalService withdrawals;
     private final AuthCookieService authCookies;
+    private final UserAccountService accounts;
 
     public MeApiController(
             UserQueryService users,
             PatientRepository patients,
             UserWithdrawalService withdrawals,
-            AuthCookieService authCookies
+            AuthCookieService authCookies,
+            UserAccountService accounts
     ) {
         this.users = users;
         this.patients = patients;
         this.withdrawals = withdrawals;
         this.authCookies = authCookies;
+        this.accounts = accounts;
     }
 
     @GetMapping("/api/me")
     public MeResponse me(@AuthenticationPrincipal OAuth2User principal) {
         User user = users.requireByKakaoId(kakaoId(principal));
-        return MeResponse.of(user, inviteCodeFor(user));
+        return responseFor(user);
+    }
+
+    /** 보호자 계정도 본인 건강관리용 개인 프로필과 초대 코드를 만들 수 있다. */
+    @PostMapping("/api/me/patient-profile")
+    public MeResponse createPatientProfile(@AuthenticationPrincipal OAuth2User principal) {
+        User user = users.requireByKakaoId(kakaoId(principal));
+        accounts.ensurePatientProfile(user);
+        return responseFor(user);
     }
 
     @DeleteMapping("/api/me")
@@ -72,13 +84,9 @@ public class MeApiController {
         return id == null ? "" : String.valueOf(id);
     }
 
-    private String inviteCodeFor(User user) {
-        if (user.getRole() != UserRole.PATIENT) {
-            return null;
-        }
-        return patients.findByUserId(user.getId())
-                .map(Patient::getInviteCode)
-                .map(CareRelationCode::display)
-                .orElse(null);
+    private MeResponse responseFor(User user) {
+        Patient patient = patients.findByUserId(user.getId()).orElse(null);
+        String inviteCode = patient == null ? null : CareRelationCode.display(patient.getInviteCode());
+        return MeResponse.of(user, inviteCode, patient == null ? null : patient.getId().toString());
     }
 }

@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/** 의료 문서 열람 권한 규칙입니다. 개인은 본인 문서만, 보호자는 ACTIVE 연결된 개인의 문서만 열람합니다. */
+/** 의료 문서 열람 권한 규칙입니다. 내 건강 프로필 또는 ACTIVE 돌봄 관계의 문서만 열람합니다. */
 @Component
 public class MedicalDocumentAccessPolicy {
 
@@ -28,14 +28,11 @@ public class MedicalDocumentAccessPolicy {
         this.patients = patients;
     }
 
-    /** 열람 가능 여부를 반환합니다. 개인은 본인, 보호자는 ACTIVE 연결된 개인만 true입니다. */
+    /** 열람 가능 여부를 반환합니다. 한 계정은 본인 프로필과 돌보는 개인을 함께 조회할 수 있습니다. */
     public boolean canRead(User actor, UUID patientId) {
-        return switch (actor.getRole()) {
-            case PATIENT -> ownPatientId(actor).filter(patientId::equals).isPresent();
-            case CAREGIVER -> relations.findFirstByPatientIdAndCaregiverIdAndStatusIn(
-                    patientId, actor.getId(), READABLE).isPresent();
-            default -> false;
-        };
+        return ownPatientId(actor).filter(patientId::equals).isPresent()
+                || relations.findFirstByPatientIdAndCaregiverIdAndStatusIn(
+                patientId, actor.getId(), READABLE).isPresent();
     }
 
     /** 열람 권한이 없으면 DOCUMENT_ACCESS_DENIED(403)를 던집니다. 목록 조회에서 사용합니다. */
@@ -45,14 +42,10 @@ public class MedicalDocumentAccessPolicy {
         }
     }
 
-    /** 삭제 가능 여부를 반환합니다. 개인은 본인 문서, 보호자는 ACTIVE 연결된 개인의 문서 중 본인이 올린 문서만 true입니다. */
+    /** 삭제 가능 여부를 반환합니다. 내 프로필 문서는 모두, 돌보는 개인 문서는 내가 올린 것만 삭제할 수 있습니다. */
     public boolean canDelete(User me, MedicalDocument document) {
-        return switch (me.getRole()) {
-            case PATIENT -> ownPatientId(me).filter(document.getPatientId()::equals).isPresent();
-            case CAREGIVER -> me.getId().equals(document.getUploaderUserId())
-                    && canRead(me, document.getPatientId());
-            default -> false;
-        };
+        return ownPatientId(me).filter(document.getPatientId()::equals).isPresent()
+                || (me.getId().equals(document.getUploaderUserId()) && canRead(me, document.getPatientId()));
     }
 
     private Optional<UUID> ownPatientId(User actor) {

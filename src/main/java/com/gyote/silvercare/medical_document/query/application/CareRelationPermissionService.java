@@ -7,7 +7,6 @@ import com.gyote.silvercare.medical_document.error.AiDocumentErrorCode;
 import com.gyote.silvercare.patient.domain.Patient;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.user.domain.User;
-import com.gyote.silvercare.user.domain.UserRole;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,21 +21,16 @@ public class CareRelationPermissionService {
     private final PatientRepository patients;
     private final CareRelationRepository relations;
 
-    /** 요청 조건과 사용자 역할을 기준으로 조회 대상 환자를 결정한다. */
+    /** 요청 대상이 내 건강 프로필이거나 ACTIVE 돌봄 관계의 개인인지 검증한다. */
     public UUID resolveTargetPatient(User actor, UUID requestedPatientId) {
-        if (actor.getRole() == UserRole.PATIENT) {
-            UUID ownPatientId = ownPatientId(actor);
-            if (requestedPatientId != null && !ownPatientId.equals(requestedPatientId)) {
-                throw new BusinessException(AiDocumentErrorCode.DOCUMENT_ACCESS_DENIED);
-            }
-            return ownPatientId;
-        }
-
-        if (actor.getRole() != UserRole.CAREGIVER) {
-            throw new BusinessException(AiDocumentErrorCode.DOCUMENT_ACCESS_DENIED);
-        }
         if (requestedPatientId == null) {
+            if (patients.findByUserId(actor.getId()).isPresent()) {
+                return ownPatientId(actor);
+            }
             throw new BusinessException(AiDocumentErrorCode.PATIENT_REQUIRED);
+        }
+        if (patients.findByUserId(actor.getId()).map(Patient::getId).filter(requestedPatientId::equals).isPresent()) {
+            return requestedPatientId;
         }
         requireCaregiverAccess(actor, requestedPatientId);
         return requestedPatientId;
@@ -44,19 +38,11 @@ public class CareRelationPermissionService {
 
     /** 문서 소유 환자에 대한 현재 사용자의 조회 권한을 검증한다. */
     public UUID requireDocumentAccess(User actor, UUID documentPatientId) {
-        if (actor.getRole() == UserRole.PATIENT) {
-            if (!ownPatientId(actor).equals(documentPatientId)) {
-                throw new BusinessException(AiDocumentErrorCode.DOCUMENT_ACCESS_DENIED);
-            }
+        if (patients.findByUserId(actor.getId()).map(Patient::getId).filter(documentPatientId::equals).isPresent()) {
             return documentPatientId;
         }
-
-        if (actor.getRole() == UserRole.CAREGIVER) {
-            requireCaregiverAccess(actor, documentPatientId);
-            return documentPatientId;
-        }
-
-        throw new BusinessException(AiDocumentErrorCode.DOCUMENT_ACCESS_DENIED);
+        requireCaregiverAccess(actor, documentPatientId);
+        return documentPatientId;
     }
 
     /** 보호자와 환자 사이에 활성화된 돌봄 관계가 있는지 검증한다. */

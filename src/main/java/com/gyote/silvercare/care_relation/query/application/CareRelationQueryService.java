@@ -9,7 +9,6 @@ import com.gyote.silvercare.global.exception.BusinessException;
 import com.gyote.silvercare.patient.domain.Patient;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.user.domain.User;
-import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
 import com.gyote.silvercare.user.query.application.UserQueryService;
 import org.springframework.stereotype.Service;
@@ -48,9 +47,10 @@ public class CareRelationQueryService {
     }
 
     public List<CareRelationView> listFor(User me) {
-        List<CareRelation> rows = me.getRole() == UserRole.PATIENT
-                ? relations.findByPatientIdOrderByRequestedAtDesc(patientIdFor(me))
-                : relations.findByCaregiverIdOrderByRequestedAtDesc(me.getId());
+        List<CareRelation> rows = new java.util.ArrayList<>(relations.findByCaregiverIdOrderByRequestedAtDesc(me.getId()));
+        patients.findByUserId(me.getId())
+                .ifPresent(patient -> rows.addAll(relations.findByPatientIdOrderByRequestedAtDesc(patient.getId())));
+        rows.sort(java.util.Comparator.comparing(CareRelation::getRequestedAt).reversed());
         Map<UUID, String> namesById = users.findAllById(counterpartIds(rows, me)).stream()
                 .collect(Collectors.toMap(User::getId, User::getName));
         return rows.stream().map(row -> toView(row, me, namesById)).toList();
@@ -68,23 +68,17 @@ public class CareRelationQueryService {
     }
 
     private boolean isParticipant(CareRelation row, User me) {
-        if (me.getRole() == UserRole.PATIENT) {
-            return patients.findByUserId(me.getId())
-                    .map(patient -> patient.getId().equals(row.getPatientId()))
-                    .orElse(false);
-        }
-        return me.getRole() == UserRole.CAREGIVER && me.getId().equals(row.getCaregiverId());
+        return isPatientSide(row, me) || me.getId().equals(row.getCaregiverId());
     }
 
     private Set<UUID> counterpartIds(List<CareRelation> rows, User me) {
-        boolean patientSide = me.getRole() == UserRole.PATIENT;
         return rows.stream()
-                .map(row -> patientSide ? row.getCaregiverId() : patientUserId(row))
+                .map(row -> isPatientSide(row, me) ? row.getCaregiverId() : patientUserId(row))
                 .collect(Collectors.toSet());
     }
 
     private CareRelationView toView(CareRelation row, User me, Map<UUID, String> namesById) {
-        boolean patientSide = me.getRole() == UserRole.PATIENT;
+        boolean patientSide = isPatientSide(row, me);
         var otherId = patientSide ? row.getCaregiverId() : patientUserId(row);
         String name = namesById.getOrDefault(otherId, "이용자");
         boolean requested = row.getStatus() == CareRelationStatus.REQUESTED;
@@ -108,6 +102,12 @@ public class CareRelationQueryService {
         return patients.findByUserId(user.getId())
                 .map(Patient::getId)
                 .orElseThrow(() -> new IllegalStateException("환자 프로필이 없습니다."));
+    }
+
+    private boolean isPatientSide(CareRelation row, User user) {
+        return patients.findByUserId(user.getId())
+                .map(patient -> patient.getId().equals(row.getPatientId()))
+                .orElse(false);
     }
 
     private UUID patientUserId(CareRelation relation) {

@@ -14,17 +14,25 @@ public record MeResponse(
         String role,
         String status,
         String inviteCode,
+        boolean hasPatientProfile,
+        String patientId,
         String loginProvider,
         Instant createdAt
 ) {
 
     public static MeResponse of(User user, String displayInviteCode) {
+        return of(user, displayInviteCode, null);
+    }
+
+    public static MeResponse of(User user, String displayInviteCode, String patientId) {
         return new MeResponse(
                 user.getId().toString(),
                 user.getName(),
                 user.getRole().name(),
                 user.getStatus().name(),
                 displayInviteCode,
+                patientId != null,
+                patientId,
                 user.isDemoAccount() ? "DEMO" : "KAKAO",
                 user.getCreatedAt()
         );

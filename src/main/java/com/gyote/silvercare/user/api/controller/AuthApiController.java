@@ -13,6 +13,7 @@ import com.gyote.silvercare.user.api.dto.response.MeResponse;
 import com.gyote.silvercare.user.command.application.UserAccountService;
 import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
+import com.gyote.silvercare.patient.domain.Patient;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
@@ -110,7 +111,9 @@ public class AuthApiController {
 
     private MeResponse toMe(User user) {
         String inviteCode = accounts.patientInviteCode(user);
-        return MeResponse.of(user, inviteCode == null ? null : CareRelationCode.display(inviteCode));
+        Patient patient = accounts.patientProfile(user);
+        return MeResponse.of(user, inviteCode == null ? null : CareRelationCode.display(inviteCode),
+                patient == null ? null : patient.getId().toString());
     }
 
     private void refreshSession(OAuth2User current, User updated) {

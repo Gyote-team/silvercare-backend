@@ -7,7 +7,6 @@ import com.gyote.silvercare.care_relation.domain.repository.CareRelationReposito
 import com.gyote.silvercare.patient.domain.Patient;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.user.domain.User;
-import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.UserStatus;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
 import com.gyote.silvercare.user.error.UserErrorCode;
@@ -47,9 +46,6 @@ public class CareRelationCommandService {
 
     @Transactional
     public CareRelation request(User caregiver, String rawCode) {
-        if (caregiver.getRole() != UserRole.CAREGIVER) {
-            throw new BusinessException(CareRelationErrorCode.CAREGIVER_ONLY);
-        }
         Patient patient = patients.findByInviteCode(CareRelationCode.normalize(rawCode))
                 .orElseThrow(() -> new BusinessException(CareRelationErrorCode.INVITE_CODE_NOT_FOUND));
         if (patient.getUserId().equals(caregiver.getId())) {
@@ -133,12 +129,6 @@ public class CareRelationCommandService {
                 .orElseThrow(() -> new BusinessException(CareRelationErrorCode.RELATION_NOT_FOUND));
         UUID expected = asPatient ? patientUserId(relation) : relation.getCaregiverId();
         if (!expected.equals(actor.getId())) {
-            throw new BusinessException(CareRelationErrorCode.RELATION_ACCESS_DENIED);
-        }
-        if (asPatient && actor.getRole() != UserRole.PATIENT) {
-            throw new BusinessException(CareRelationErrorCode.RELATION_ACCESS_DENIED);
-        }
-        if (!asPatient && actor.getRole() != UserRole.CAREGIVER) {
             throw new BusinessException(CareRelationErrorCode.RELATION_ACCESS_DENIED);
         }
         return relation;

@@ -213,6 +213,29 @@ class CareRelationServiceTest {
     }
 
     @Test
+    void oneAccountCanHaveOwnProfileAndCareForAnotherPerson() {
+        UserAccountService accounts = new UserAccountService(users, patients);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
+        CareRelationQueryService queries = new CareRelationQueryService(relations, users, new UserQueryService(users), patients);
+        User selfAndCaregiver = accounts.chooseRole(
+                accounts.loginOrRegister("kakao-minji", "김민지").getKakaoId(), UserRole.CAREGIVER);
+        User parent = accounts.chooseRole(
+                accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(), UserRole.PATIENT);
+        User ownCaregiver = accounts.chooseRole(
+                accounts.loginOrRegister("kakao-child", "김딸").getKakaoId(), UserRole.CAREGIVER);
+
+        accounts.ensurePatientProfile(selfAndCaregiver);
+        CareRelation parentLink = cares.request(selfAndCaregiver, accounts.patientInviteCode(parent));
+        cares.accept(parent, parentLink.getId());
+        CareRelation ownLink = cares.request(ownCaregiver, accounts.patientInviteCode(selfAndCaregiver));
+        cares.accept(selfAndCaregiver, ownLink.getId());
+
+        assertThat(queries.listFor(selfAndCaregiver))
+                .extracting(CareRelationView::counterpartName)
+                .containsExactlyInAnyOrder("김순자", "김딸");
+    }
+
+    @Test
     void strangerCannotSeeRelationDetailAndUnknownIdIsNotFound() {
         UserAccountService accounts = new UserAccountService(users, patients);
         CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);

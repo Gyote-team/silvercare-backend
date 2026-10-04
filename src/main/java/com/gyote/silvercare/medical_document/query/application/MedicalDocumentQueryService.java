@@ -15,7 +15,6 @@ import com.gyote.silvercare.medical_document.query.model.MedicalDocumentView;
 import com.gyote.silvercare.patient.domain.Patient;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.user.domain.User;
-import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
 import com.gyote.silvercare.user.query.application.UserQueryService;
 import org.springframework.data.domain.PageRequest;
@@ -106,12 +105,9 @@ public class MedicalDocumentQueryService {
         if (patientId != null) {
             return patientId;
         }
-        if (me.getRole() == UserRole.PATIENT) {
-            return patients.findByUserId(me.getId())
-                    .map(Patient::getId)
-                    .orElseThrow(() -> new BusinessException(MedicalDocumentErrorCode.DOCUMENT_ACCESS_DENIED));
-        }
-        throw new BusinessException(MedicalDocumentErrorCode.PATIENT_ID_REQUIRED);
+        return patients.findByUserId(me.getId())
+                .map(Patient::getId)
+                .orElseThrow(() -> new BusinessException(MedicalDocumentErrorCode.PATIENT_ID_REQUIRED));
     }
 
     private static int pageSize(Integer size) {
