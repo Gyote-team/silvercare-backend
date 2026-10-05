@@ -37,11 +37,13 @@ public class CareRelationApiController {
         this.responseMapper = responseMapper;
     }
 
+    /** 현재 사용자와 관련된 개인·보호자 연결 목록을 반환한다. */
     @GetMapping("/api/care-relations")
     public List<CareRelationResponse> list(@AuthenticationPrincipal OAuth2User user) {
         return responseMapper.toResponses(queries.listFor(queries.requireUser(kakaoId(user))));
     }
 
+    /** 보호자가 개인의 초대 코드로 새 연결 요청을 만든다. */
     @PostMapping("/api/care-relations")
     public ResponseEntity<List<CareRelationResponse>> request(
             @AuthenticationPrincipal OAuth2User user,
@@ -52,26 +54,31 @@ public class CareRelationApiController {
         return ResponseEntity.ok(responseMapper.toResponses(queries.listFor(me)));
     }
 
+    /** 현재 사용자가 당사자인 연결 상세를 반환한다. */
     @GetMapping("/api/care-relations/{id}")
     public CareRelationResponse detail(@AuthenticationPrincipal OAuth2User user, @PathVariable UUID id) {
         return responseMapper.toResponse(queries.detailFor(queries.requireUser(kakaoId(user)), id));
     }
 
+    /** 개인이 대기 중인 연결 요청을 수락한다. */
     @PostMapping("/api/care-relations/{id}/accept")
     public ResponseEntity<?> accept(@AuthenticationPrincipal OAuth2User user, @PathVariable UUID id) {
         return mutate(user, () -> commands.accept(queries.requireUser(kakaoId(user)), id));
     }
 
+    /** 개인이 대기 중인 연결 요청을 거절한다. */
     @PostMapping("/api/care-relations/{id}/reject")
     public ResponseEntity<?> reject(@AuthenticationPrincipal OAuth2User user, @PathVariable UUID id) {
         return mutate(user, () -> commands.reject(queries.requireUser(kakaoId(user)), id));
     }
 
+    /** 요청을 만든 보호자가 대기 중인 연결 요청을 취소한다. */
     @DeleteMapping("/api/care-relations/{id}/request")
     public ResponseEntity<?> cancel(@AuthenticationPrincipal OAuth2User user, @PathVariable UUID id) {
         return mutate(user, () -> commands.cancel(queries.requireUser(kakaoId(user)), id));
     }
 
+    /** 연결 당사자가 활성 연결을 해제한다. */
     @DeleteMapping("/api/care-relations/{id}")
     public ResponseEntity<?> revoke(@AuthenticationPrincipal OAuth2User user, @PathVariable UUID id) {
         return mutate(user, () -> commands.revoke(queries.requireUser(kakaoId(user)), id));
