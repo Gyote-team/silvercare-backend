@@ -44,6 +44,7 @@ public class CareRelationCommandService {
         this.users = users;
     }
 
+    /** 보호자의 초대 코드 입력으로 REQUESTED 연결 관계를 생성한다. */
     @Transactional
     public CareRelation request(User caregiver, String rawCode) {
         Patient patient = patients.findByInviteCode(CareRelationCode.normalize(rawCode))
@@ -69,6 +70,7 @@ public class CareRelationCommandService {
         return relations.save(created);
     }
 
+    /** 관계의 개인이 REQUESTED 연결을 ACTIVE로 수락한다. */
     @Transactional
     public CareRelation accept(User patient, UUID relationId) {
         CareRelationRepository.Participants participants = relations.findParticipantsById(relationId)
@@ -86,6 +88,7 @@ public class CareRelationCommandService {
         return relation;
     }
 
+    /** 관계의 개인이 REQUESTED 연결을 REJECTED로 거절한다. */
     @Transactional
     public CareRelation reject(User patient, UUID relationId) {
         CareRelation relation = requireOwned(patient, relationId, true);
@@ -97,6 +100,7 @@ public class CareRelationCommandService {
         return relation;
     }
 
+    /** 요청을 만든 보호자가 REQUESTED 연결을 CANCELED로 취소한다. */
     @Transactional
     public CareRelation cancel(User caregiver, UUID relationId) {
         CareRelation relation = requireOwned(caregiver, relationId, false);
@@ -108,6 +112,7 @@ public class CareRelationCommandService {
         return relation;
     }
 
+    /** 연결 당사자가 ACTIVE 연결을 REVOKED로 해제한다. */
     @Transactional
     public CareRelation revoke(User actor, UUID relationId) {
         CareRelation relation = relations.findById(relationId)

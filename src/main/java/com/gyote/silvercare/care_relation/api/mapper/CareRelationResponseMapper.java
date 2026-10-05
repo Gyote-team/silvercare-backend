@@ -10,11 +10,14 @@ import java.util.List;
 @Component
 public class CareRelationResponseMapper {
 
+    /** 연결 조회 모델을 HTTP 응답 한 건으로 변환한다. */
     public CareRelationResponse toResponse(CareRelationView view) {
         return new CareRelationResponse(
                 view.id(),
                 view.patientId(),
+                view.caregiverId(),
                 view.counterpartName(),
+                view.counterpartRole(),
                 view.statusLabel(),
                 view.status(),
                 view.canAccept(),
@@ -27,6 +30,7 @@ public class CareRelationResponseMapper {
         );
     }
 
+    /** 연결 조회 모델 목록을 HTTP 응답 목록으로 변환한다. */
     public List<CareRelationResponse> toResponses(List<CareRelationView> views) {
         return views.stream().map(this::toResponse).toList();
     }

@@ -9,6 +9,7 @@ import com.gyote.silvercare.global.exception.BusinessException;
 import com.gyote.silvercare.patient.domain.Patient;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.user.domain.User;
+import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
 import com.gyote.silvercare.user.query.application.UserQueryService;
 import org.springframework.stereotype.Service;
@@ -42,29 +43,32 @@ public class CareRelationQueryService {
         this.patients = patients;
     }
 
+    /** 카카오 식별자로 현재 로그인 사용자를 조회한다. */
     public User requireUser(String kakaoId) {
         return userQueries.requireByKakaoId(kakaoId);
     }
 
+    /** 현재 사용자와 관련된 연결을 최신 요청 순으로 조회한다. */
     public List<CareRelationView> listFor(User me) {
         List<CareRelation> rows = new java.util.ArrayList<>(relations.findByCaregiverIdOrderByRequestedAtDesc(me.getId()));
         patients.findByUserId(me.getId())
                 .ifPresent(patient -> rows.addAll(relations.findByPatientIdOrderByRequestedAtDesc(patient.getId())));
         rows.sort(java.util.Comparator.comparing(CareRelation::getRequestedAt).reversed());
-        Map<UUID, String> namesById = users.findAllById(counterpartIds(rows, me)).stream()
-                .collect(Collectors.toMap(User::getId, User::getName));
-        return rows.stream().map(row -> toView(row, me, namesById)).toList();
+        Map<UUID, User> counterpartsById = users.findAllById(counterpartIds(rows, me)).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+        return rows.stream().map(row -> toView(row, me, counterpartsById)).toList();
     }
 
+    /** 현재 사용자가 당사자인 연결 한 건의 상태와 상대 정보를 조회한다. */
     public CareRelationView detailFor(User me, UUID relationId) {
         CareRelation row = relations.findById(relationId)
                 .orElseThrow(() -> new BusinessException(CareRelationErrorCode.RELATION_NOT_FOUND));
         if (!isParticipant(row, me)) {
             throw new BusinessException(CareRelationErrorCode.RELATION_ACCESS_DENIED);
         }
-        Map<UUID, String> namesById = users.findAllById(counterpartIds(List.of(row), me)).stream()
-                .collect(Collectors.toMap(User::getId, User::getName));
-        return toView(row, me, namesById);
+        Map<UUID, User> counterpartsById = users.findAllById(counterpartIds(List.of(row), me)).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+        return toView(row, me, counterpartsById);
     }
 
     private boolean isParticipant(CareRelation row, User me) {
@@ -77,13 +81,18 @@ public class CareRelationQueryService {
                 .collect(Collectors.toSet());
     }
 
-    private CareRelationView toView(CareRelation row, User me, Map<UUID, String> namesById) {
+    private CareRelationView toView(CareRelation row, User me, Map<UUID, User> counterpartsById) {
         boolean patientSide = isPatientSide(row, me);
         var otherId = patientSide ? row.getCaregiverId() : patientUserId(row);
-        String name = namesById.getOrDefault(otherId, "이용자");
+        User counterpart = counterpartsById.get(otherId);
+        String name = counterpart == null ? "이용자" : counterpart.getName();
+        UserRole role = counterpart == null
+                ? (patientSide ? UserRole.CAREGIVER : UserRole.PATIENT)
+                : counterpart.getRole();
         boolean requested = row.getStatus() == CareRelationStatus.REQUESTED;
         boolean active = row.getStatus() == CareRelationStatus.ACTIVE;
-        return new CareRelationView(row.getId(), row.getPatientId(), name, statusLabel(row.getStatus()), row.getStatus(),
+        return new CareRelationView(row.getId(), row.getPatientId(), row.getCaregiverId(), name, role,
+                statusLabel(row.getStatus()), row.getStatus(),
                 patientSide && requested, patientSide && requested, !patientSide && requested, active,
                 row.getRequestedAt(), row.getAcceptedAt(), row.getEndedAt());
     }

@@ -205,7 +205,10 @@ class CareRelationServiceTest {
         CareRelationView caregiverView = queries.detailFor(caregiver, requested.getId());
 
         assertThat(patientView.counterpartName()).isEqualTo("김민지");
+        assertThat(patientView.counterpartRole()).isEqualTo(UserRole.CAREGIVER);
+        assertThat(patientView.caregiverId()).isEqualTo(caregiver.getId());
         assertThat(caregiverView.counterpartName()).isEqualTo("김순자");
+        assertThat(caregiverView.counterpartRole()).isEqualTo(UserRole.PATIENT);
         assertThat(patientView.status()).isEqualTo(CareRelationStatus.REVOKED);
         assertThat(patientView.requestedAt()).isNotNull();
         assertThat(patientView.acceptedAt()).isNotNull();
