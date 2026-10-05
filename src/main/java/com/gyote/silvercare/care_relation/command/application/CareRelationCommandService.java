@@ -63,6 +63,9 @@ public class CareRelationCommandService {
         if (!isActive(locked.get(caregiver.getId()))) {
             throw new BusinessException(UserErrorCode.USER_ALREADY_WITHDRAWN);
         }
+        if (sameAccountGroup(locked.get(patient.getUserId()), locked.get(caregiver.getId()))) {
+            throw new BusinessException(CareRelationErrorCode.SELF_RELATION_NOT_ALLOWED);
+        }
         if (relations.findFirstByPatientIdAndCaregiverIdAndStatusIn(
                 patient.getId(), caregiver.getId(), ALIVE).isPresent()) {
             throw new BusinessException(CareRelationErrorCode.RELATION_ALREADY_EXISTS);
@@ -160,6 +163,11 @@ public class CareRelationCommandService {
 
     private boolean isActive(User user) {
         return user != null && user.getStatus() == UserStatus.ACTIVE;
+    }
+
+    /** 같은 사람의 개인 계정과 보호자 계정은 서로 연결할 수 없다. */
+    private boolean sameAccountGroup(User patientUser, User caregiver) {
+        return patientUser.getAccountGroupId().equals(caregiver.getAccountGroupId());
     }
 
     private UUID patientUserId(CareRelation relation) {

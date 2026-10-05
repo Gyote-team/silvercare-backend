@@ -18,7 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 
-/** 회원 탈퇴와 함께 활성 연결은 해제하고 대기 중인 연결 요청은 취소한다. */
+/**
+ * 회원 탈퇴와 함께 활성 연결은 해제하고 대기 중인 연결 요청은 취소한다.
+ * 개인 계정과 보호자 계정은 같은 사람의 것이므로 함께 탈퇴한다.
+ */
 @Service
 public class UserWithdrawalService {
 
@@ -42,19 +45,27 @@ public class UserWithdrawalService {
             throw new BusinessException(UserErrorCode.WITHDRAWAL_CONFIRMATION_REQUIRED);
         }
 
-        User user = users.findByKakaoIdForUpdate(kakaoId)
+        User me = users.findByKakaoId(kakaoId)
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
-        if (user.getStatus() == UserStatus.WITHDRAWN) {
+        List<User> group = users.findAllByAccountGroupIdForUpdate(me.getAccountGroupId());
+        List<User> remaining = group.stream()
+                .filter(user -> user.getStatus() != UserStatus.WITHDRAWN)
+                .toList();
+        if (remaining.stream().noneMatch(user -> user.getId().equals(me.getId()))) {
             throw new BusinessException(UserErrorCode.USER_ALREADY_WITHDRAWN);
         }
 
         Instant withdrawnAt = Instant.now();
-        List<CareRelation> activeRelations = relationsFor(user, CareRelationStatus.ACTIVE);
-        activeRelations.forEach(relation -> relation.revoke(withdrawnAt));
-        relationsFor(user, CareRelationStatus.REQUESTED).forEach(relation -> relation.cancel(withdrawnAt));
-        user.withdraw(withdrawnAt);
+        int revoked = 0;
+        for (User user : remaining) {
+            List<CareRelation> activeRelations = relationsFor(user, CareRelationStatus.ACTIVE);
+            activeRelations.forEach(relation -> relation.revoke(withdrawnAt));
+            relationsFor(user, CareRelationStatus.REQUESTED).forEach(relation -> relation.cancel(withdrawnAt));
+            user.withdraw(withdrawnAt);
+            revoked += activeRelations.size();
+        }
 
-        return new WithdrawalResponse(UserStatus.WITHDRAWN, activeRelations.size());
+        return new WithdrawalResponse(UserStatus.WITHDRAWN, revoked);
     }
 
     private List<CareRelation> relationsFor(User user, CareRelationStatus status) {

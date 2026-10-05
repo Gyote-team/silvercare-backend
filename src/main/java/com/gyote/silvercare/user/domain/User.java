@@ -17,6 +17,7 @@ import java.util.UUID;
 public class User {
 
     public static final String DEMO_KAKAO_ID_PREFIX = "demo-";
+    private static final String LINKED_KEY_SEPARATOR = "#";
 
     @Id
     @Column(length = 36, nullable = false)
@@ -42,6 +43,10 @@ public class User {
     @Column(name = "kakao_id", unique = true, length = 255)
     private String kakaoId;
 
+    /** 같은 사람이 가진 개인·보호자 계정을 묶는 id. 처음 만든 계정의 id를 그대로 쓴다. */
+    @Column(name = "account_group_id", nullable = false, length = 36)
+    private UUID accountGroupId;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -55,6 +60,9 @@ public class User {
     void onCreate() {
         if (id == null) {
             id = UUID.randomUUID();
+        }
+        if (accountGroupId == null) {
+            accountGroupId = id;
         }
         Instant now = Instant.now();
         createdAt = now;
@@ -123,6 +131,29 @@ public class User {
 
     public void setKakaoId(String kakaoId) {
         this.kakaoId = kakaoId;
+    }
+
+    public UUID getAccountGroupId() {
+        return accountGroupId;
+    }
+
+    /** 처음 만든 계정이면 true. 카카오 로그인은 이 계정으로 들어온다. */
+    public boolean isGroupOwner() {
+        return id != null && id.equals(accountGroupId);
+    }
+
+    /**
+     * 같은 사람의 다른 역할 계정을 만든다.
+     * kakao_id는 계정마다 고유해야 하므로 처음 계정의 kakao_id 뒤에 역할을 붙인 값을 계정 키로 쓴다.
+     */
+    public static User linkedAccount(User owner, String name, UserRole role) {
+        User linked = new User();
+        linked.kakaoId = owner.getKakaoId() + LINKED_KEY_SEPARATOR + role.name();
+        linked.accountGroupId = owner.getAccountGroupId();
+        linked.name = name;
+        linked.role = role;
+        linked.status = UserStatus.ACTIVE;
+        return linked;
     }
 
     public Instant getCreatedAt() {
