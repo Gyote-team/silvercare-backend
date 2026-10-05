@@ -4,6 +4,7 @@ import com.gyote.silvercare.global.exception.BusinessException;
 import com.gyote.silvercare.medical_document.error.MedicalDocumentErrorCode;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -14,9 +15,11 @@ import javax.imageio.stream.MemoryCacheImageInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.Locale;
 
-/** 업로드 파일이 JPEG·PNG·PDF인지 실제 내용으로 검사하고, 크기·PDF 페이지 수·이미지 해상도 한도를 확인하는 코드입니다. */
+/**
+ * 업로드 파일이 JPEG·PNG·PDF인지 내용 시그니처로만 판정하고, 크기·PDF 페이지 수·이미지 해상도 한도를 확인하는 코드입니다.
+ * 요청의 Content-Type은 판정에 쓰지 않으며, 열람 비밀번호가 필요한 PDF는 ENCRYPTED_PDF로 거절합니다.
+ */
 @Component
 public class DocumentFileValidator {
 
@@ -34,11 +37,11 @@ public class DocumentFileValidator {
         this.maxImagePixels = maxImagePixels;
     }
 
-    /** 업로드 파일을 정해진 순서로 검사하고, 통과하면 내용으로 판별한 실제 파일 형식을 반환합니다. */
-    public DocumentFileType validate(byte[] content, String contentType) {
+    /** 업로드 파일을 정해진 순서로 검사하고, 통과하면 내용 시그니처로 판별한 실제 파일 형식을 반환합니다. 요청의 Content-Type은 보지 않습니다. */
+    public DocumentFileType validate(byte[] content) {
         checkSize(content);
-        DocumentFileType declaredType = findDeclaredType(contentType);
-        DocumentFileType actualType = findActualType(content, declaredType);
+        DocumentFileType actualType = DocumentFileType.findBySignature(content)
+                .orElseThrow(DocumentFileValidator::unsupportedFileType);
         if (actualType == DocumentFileType.PDF) {
             checkPdfPages(content);
         } else {
@@ -54,21 +57,6 @@ public class DocumentFileValidator {
         if (content.length > maxBytes) {
             throw new BusinessException(MedicalDocumentErrorCode.FILE_TOO_LARGE);
         }
-    }
-
-    private DocumentFileType findDeclaredType(String contentType) {
-        if (contentType == null) {
-            throw unsupportedFileType();
-        }
-        String mimeType = contentType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
-        return DocumentFileType.findByMimeType(mimeType)
-                .orElseThrow(DocumentFileValidator::unsupportedFileType);
-    }
-
-    private DocumentFileType findActualType(byte[] content, DocumentFileType declaredType) {
-        return DocumentFileType.findBySignature(content)
-                .filter(actualType -> actualType == declaredType)
-                .orElseThrow(DocumentFileValidator::unsupportedFileType);
     }
 
     private void checkImagePixels(byte[] content) {
@@ -105,12 +93,12 @@ public class DocumentFileValidator {
         }
     }
 
+    /** 비밀번호 없이 열리는 PDF(소유자 비밀번호만 걸린 권한 제한 PDF 포함)의 쪽수를 반환합니다. 열람 비밀번호가 필요하면 ENCRYPTED_PDF로 거절합니다. */
     private int readPdfPageCount(byte[] content) {
         try (PDDocument document = Loader.loadPDF(content)) {
-            if (document.isEncrypted()) {
-                throw unsupportedFileType();
-            }
             return document.getNumberOfPages();
+        } catch (InvalidPasswordException e) {
+            throw new BusinessException(MedicalDocumentErrorCode.ENCRYPTED_PDF);
         } catch (IOException | RuntimeException e) {
             throw unsupportedFileType();
         }

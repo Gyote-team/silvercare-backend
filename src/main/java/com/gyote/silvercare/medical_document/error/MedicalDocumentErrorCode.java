@@ -19,7 +19,8 @@ public enum MedicalDocumentErrorCode implements ErrorCode {
     INVALID_IDEMPOTENCY_KEY(HttpStatus.BAD_REQUEST, "MEDICAL_DOCUMENT_013", "Idempotency-Key는 1자 이상 100자 이하여야 합니다."),
     IDEMPOTENCY_KEY_CONFLICT(HttpStatus.CONFLICT, "MEDICAL_DOCUMENT_014", "같은 Idempotency-Key가 다른 방문의 업로드에 이미 사용됐습니다."),
     INVALID_DOC_TYPE(HttpStatus.BAD_REQUEST, "MEDICAL_DOCUMENT_015", "문서 유형 값이 올바르지 않습니다."),
-    STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "MEDICAL_DOCUMENT_016", "파일 저장소를 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.");
+    STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "MEDICAL_DOCUMENT_016", "파일 저장소를 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."),
+    ENCRYPTED_PDF(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "MEDICAL_DOCUMENT_017", "비밀번호가 걸린 PDF는 올릴 수 없습니다. 비밀번호를 해제한 뒤 다시 올려 주세요.");
 
     private final HttpStatus status;
     private final String code;

@@ -29,13 +29,6 @@ public enum DocumentFileType {
         return extension;
     }
 
-    /** MIME 타입과 일치하는 형식을 찾아 반환합니다. 없으면 빈 Optional을 반환합니다. */
-    public static Optional<DocumentFileType> findByMimeType(String mimeType) {
-        return Arrays.stream(values())
-                .filter(type -> type.mimeType.equals(mimeType))
-                .findFirst();
-    }
-
     /** 파일 앞부분 시그니처로 실제 형식을 찾아 반환합니다. 판별할 수 없으면 빈 Optional을 반환합니다. */
     public static Optional<DocumentFileType> findBySignature(byte[] content) {
         return Arrays.stream(values())

@@ -28,7 +28,8 @@ class MedicalDocumentErrorCodeTest {
             "INVALID_IDEMPOTENCY_KEY,   400, MEDICAL_DOCUMENT_013",
             "IDEMPOTENCY_KEY_CONFLICT,  409, MEDICAL_DOCUMENT_014",
             "INVALID_DOC_TYPE,          400, MEDICAL_DOCUMENT_015",
-            "STORAGE_UNAVAILABLE,       503, MEDICAL_DOCUMENT_016"
+            "STORAGE_UNAVAILABLE,       503, MEDICAL_DOCUMENT_016",
+            "ENCRYPTED_PDF,             415, MEDICAL_DOCUMENT_017"
     })
     void businessExceptionKeepsMedicalDocumentStatusAndCode(
             MedicalDocumentErrorCode errorCode, int expectedStatus, String expectedCode

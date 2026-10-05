@@ -140,6 +140,16 @@ class DocumentUploadApiTest {
         assertError(withKey(upload(visitId, text)).cookie(loginCookies), 415, "MEDICAL_DOCUMENT_008");
     }
 
+    @Test
+    void pdfSentAsOctetStreamIsCreatedAsPdf() throws Exception {
+        MockMultipartFile octetStream =
+                new MockMultipartFile("file", "검사결과.pdf", "application/octet-stream", pdf());
+
+        mvc.perform(withKey(upload(visitId, octetStream)).cookie(loginCookies))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.mimeType").value("application/pdf"));
+    }
+
     /** 요청이 주어진 상태 코드와 오류 code로 끝나는지 확인합니다. */
     private void assertError(MockHttpServletRequestBuilder request, int status, String code) throws Exception {
         mvc.perform(request)

@@ -49,7 +49,8 @@ public class MedicalDocumentCommandController {
 
     /**
      * 방문에 의료 문서 원본(JPEG·PNG·PDF)을 업로드하는 API입니다. 새로 만들면 201, 같은 Idempotency-Key 재요청이면 200입니다.
-     * 오류: 400(요청 값·키·문서 유형), 401(비로그인), 403(권한 없음), 404(방문 없음), 409(키 충돌), 413(크기 초과), 415(형식), 503(저장소 장애).
+     * 형식은 파일 내용으로 판정하며 파일 파트의 Content-Type은 보지 않습니다.
+     * 오류: 400(요청 값·키·문서 유형), 401(비로그인), 403(권한 없음), 404(방문 없음), 409(키 충돌), 413(크기 초과), 415(형식·비밀번호 PDF), 503(저장소 장애).
      */
     @PostMapping(value = "/api/visits/{visitId}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<DocumentUploadResponseDto> upload(
@@ -62,7 +63,7 @@ public class MedicalDocumentCommandController {
         User me = queries.requireUser(kakaoId(user));
         DocumentUploadResult result = uploads.upload(me, new DocumentUploadCommand(
                 visitId, idempotencyKey, declaredDocType,
-                file.getOriginalFilename(), file.getContentType(), readBytes(file)));
+                file.getOriginalFilename(), readBytes(file)));
         HttpStatus status = result.created() ? HttpStatus.CREATED : HttpStatus.OK;
         return ResponseEntity.status(status).body(responseMapper.toUploadResponse(result));
     }

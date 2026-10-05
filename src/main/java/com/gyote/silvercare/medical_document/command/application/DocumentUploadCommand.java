@@ -8,7 +8,6 @@ public record DocumentUploadCommand(
         String idempotencyKey,
         String declaredDocType,
         String fileName,
-        String contentType,
         byte[] content
 ) {
 }

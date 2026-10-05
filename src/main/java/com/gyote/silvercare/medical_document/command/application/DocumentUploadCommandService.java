@@ -67,7 +67,7 @@ public class DocumentUploadCommandService {
         if (replay.isPresent()) {
             return replay.get();
         }
-        DocumentFileType fileType = validator.validate(command.content(), command.contentType());
+        DocumentFileType fileType = validator.validate(command.content());
         MedicalDocument document = newDocument(me, patientId, command, declaredDocType, fileType);
         storeOriginal(document, command.content());
         return saveOrReplay(me, command, document);

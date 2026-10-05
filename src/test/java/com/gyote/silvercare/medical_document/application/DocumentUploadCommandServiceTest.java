@@ -237,12 +237,19 @@ class DocumentUploadCommandServiceTest {
 
     @Test
     void disguisedFileIsRejectedBeforeStoring() {
-        DocumentUploadCommand disguised = new DocumentUploadCommand(
-                visitId, KEY, null, "검사결과.png", "image/png", PDF);
+        DocumentUploadCommand disguised = command("검사결과.pdf", "plain text".getBytes());
 
         assertErrorCode(() -> uploads.upload(patient, disguised), MedicalDocumentErrorCode.UNSUPPORTED_FILE_TYPE);
 
         assertThat(storage.stored).isEmpty();
+    }
+
+    @Test
+    void pdfContentWithPngFileNameIsStoredAsPdf() {
+        MedicalDocument document = uploads.upload(patient, command("사진.png", PDF)).document();
+
+        assertThat(document.getMimeType()).isEqualTo(PDF_MIME);
+        assertThat(document.getStorageKey()).endsWith("/original.pdf");
     }
 
     @Test
@@ -285,9 +292,7 @@ class DocumentUploadCommandServiceTest {
 
     @Test
     void pngUploadKeepsPngExtensionAndMimeType() {
-        DocumentUploadCommand png = new DocumentUploadCommand(visitId, KEY, null, "사진.png", "image/png", png());
-
-        MedicalDocument document = uploads.upload(patient, png).document();
+        MedicalDocument document = uploads.upload(patient, command("사진.png", png())).document();
 
         assertThat(document.getStorageKey()).endsWith("/original.png");
         assertThat(document.getMimeType()).isEqualTo("image/png");
@@ -394,11 +399,16 @@ class DocumentUploadCommandServiceTest {
     }
 
     private DocumentUploadCommand command(UUID visitId, String key, String declaredDocType) {
-        return new DocumentUploadCommand(visitId, key, declaredDocType, "검사결과.pdf", PDF_MIME, PDF);
+        return new DocumentUploadCommand(visitId, key, declaredDocType, "검사결과.pdf", PDF);
+    }
+
+    /** 기본 방문·키에 파일명과 내용만 바꾼 업로드 입력을 만듭니다. */
+    private DocumentUploadCommand command(String fileName, byte[] content) {
+        return new DocumentUploadCommand(visitId, KEY, null, fileName, content);
     }
 
     private String uploadedFileName(String key, String fileName) {
-        DocumentUploadCommand command = new DocumentUploadCommand(visitId, key, null, fileName, PDF_MIME, PDF);
+        DocumentUploadCommand command = new DocumentUploadCommand(visitId, key, null, fileName, PDF);
         return uploads.upload(patient, command).document().getFileName();
     }
 
