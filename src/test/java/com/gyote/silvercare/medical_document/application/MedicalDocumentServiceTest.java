@@ -124,9 +124,13 @@ class MedicalDocumentServiceTest {
     }
 
     @Test
-    void caregiverWithoutPatientIdIsRejected() {
-        assertErrorCode(() -> queries.list(caregiver, null, null, null, null),
-                MedicalDocumentErrorCode.PATIENT_ID_REQUIRED);
+    void caregiverWithoutPatientIdListsOwnDocumentsOnly() {
+        saveDocument(patientId, patient);
+        MedicalDocument own = saveDocument(patientIdOf(caregiver), caregiver);
+
+        MedicalDocumentPage page = queries.list(caregiver, null, null, null, null);
+
+        assertThat(idsOf(page)).containsExactly(own.getId());
     }
 
     @Test
