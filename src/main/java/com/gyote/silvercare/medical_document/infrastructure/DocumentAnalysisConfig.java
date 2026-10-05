@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
-import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -21,7 +20,6 @@ import java.time.Duration;
  * AI 서버 주소 유무에 따라 분석 요청 구현을 고르고, 분석 요청 전용 비동기 스레드풀을 등록합니다.
  */
 @Configuration
-@EnableAsync
 public class DocumentAnalysisConfig {
 
     private static final Logger log = LoggerFactory.getLogger(DocumentAnalysisConfig.class);
