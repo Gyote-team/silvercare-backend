@@ -49,7 +49,7 @@ public class DocumentUploadedListener {
         this.retryBackoff = retryBackoff;
     }
 
-    /** UPLOADED 상태인 문서의 분석 시작을 요청합니다. 예외는 밖으로 던지지 않고 로그만 남기며, 반환값은 없습니다. */
+    /** UPLOADED 상태인 문서의 분석 시작을 요청합니다. 예상 밖 예외는 밖으로 던지지 않고 최종 실패로 기록하며, 반환값은 없습니다. */
     @Async("documentAnalysisExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void requestAnalysis(DocumentUploadedEvent event) {
@@ -57,6 +57,17 @@ public class DocumentUploadedListener {
             requestWithRetry(event);
         } catch (Exception e) {
             log.error("분석 시작 요청 처리 중 오류: documentId={}, error={}",
+                    event.documentId(), e.getClass().getSimpleName());
+            recordUnexpectedFailure(event);
+        }
+    }
+
+    /** 문서가 PENDING으로 남지 않도록 AI_UNAVAILABLE 실패로 기록합니다. 기록까지 실패하면 로그만 남깁니다. */
+    private void recordUnexpectedFailure(DocumentUploadedEvent event) {
+        try {
+            states.changeToFailed(event.documentId(), event.analysisId(), AnalysisFailureType.AI_UNAVAILABLE);
+        } catch (Exception e) {
+            log.error("분석 실패 기록 중 오류: documentId={}, error={}",
                     event.documentId(), e.getClass().getSimpleName());
         }
     }

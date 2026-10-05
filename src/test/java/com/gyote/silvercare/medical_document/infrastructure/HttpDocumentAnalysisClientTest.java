@@ -89,6 +89,16 @@ class HttpDocumentAnalysisClientTest {
     }
 
     @Test
+    void requestTimeoutIsTimeout() {
+        assertFailure(withStatus(HttpStatus.REQUEST_TIMEOUT), AnalysisFailureType.AI_TIMEOUT);
+    }
+
+    @Test
+    void redirectIsNotSuccess() {
+        assertFailure(withStatus(HttpStatus.FOUND), AnalysisFailureType.AI_REQUEST_REJECTED);
+    }
+
+    @Test
     void connectionErrorIsUnavailable() {
         assertFailure(withException(new ConnectException("연결 거부")), AnalysisFailureType.AI_UNAVAILABLE);
     }

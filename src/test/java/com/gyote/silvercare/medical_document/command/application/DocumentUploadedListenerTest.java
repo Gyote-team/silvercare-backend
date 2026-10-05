@@ -49,6 +49,8 @@ class DocumentUploadedListenerTest {
             DocumentAnalysisResult.failure(AnalysisFailureType.AI_UNAVAILABLE);
     private static final DocumentAnalysisResult AUTH_FAILED =
             DocumentAnalysisResult.failure(AnalysisFailureType.INTERNAL_AUTH_FAILED);
+    private static final DocumentAnalysisResult TIMEOUT =
+            DocumentAnalysisResult.failure(AnalysisFailureType.AI_TIMEOUT);
 
     @Autowired
     private UserRepository users;
@@ -200,6 +202,16 @@ class DocumentUploadedListenerTest {
 
         assertThatCode(this::handleUploadedEvent).doesNotThrowAnyException();
 
+        assertFinalFailure(AnalysisFailureType.AI_UNAVAILABLE, true, 0);
+    }
+
+    @Test
+    void failureWhileRecordingUnexpectedFailureDoesNotEscapeListener() {
+        port.throwOnRequest = true;
+        listener = new DocumentUploadedListener(documents, port, statesFailingToRecord(), 3, Duration.ZERO);
+
+        assertThatCode(this::handleUploadedEvent).doesNotThrowAnyException();
+
         assertStillQueued(0);
     }
 
@@ -233,6 +245,24 @@ class DocumentUploadedListenerTest {
         assertThat(view.latestAiJobStatus()).isEqualTo(AiJobStatus.FAILED);
     }
 
+    @Test
+    void queryShowsRetryableAfterTimeoutFailure() {
+        port.respondWith(TIMEOUT, TIMEOUT, TIMEOUT);
+
+        handleUploadedEvent();
+
+        assertThat(queries.get(patient, document.getId()).retryable()).isTrue();
+    }
+
+    @Test
+    void queryShowsNotRetryableAfterAuthFailure() {
+        port.respondWith(AUTH_FAILED);
+
+        handleUploadedEvent();
+
+        assertThat(queries.get(patient, document.getId()).retryable()).isFalse();
+    }
+
     /** 리스너 메서드를 직접 호출한 뒤, 이후 조회가 DB 값을 읽도록 flush·clear 합니다. */
     private void handleUploadedEvent() {
         listener.requestAnalysis(new DocumentUploadedEvent(document.getId(), analysis.getId()));
@@ -256,6 +286,16 @@ class DocumentUploadedListenerTest {
         assertThat(reloaded.isRetryable()).isEqualTo(retryable);
         assertThat(reloaded.getRetryCount()).isEqualTo(retryCount);
         assertThat(reloaded.getCompletedAt()).isNotNull();
+    }
+
+    /** 최종 실패 기록이 항상 예외로 끝나는 상태 기록 서비스를 만듭니다. */
+    private DocumentAnalysisStateCommandService statesFailingToRecord() {
+        return new DocumentAnalysisStateCommandService(documents, analyses) {
+            @Override
+            public void changeToFailed(UUID documentId, UUID analysisId, AnalysisFailureType failureType) {
+                throw new IllegalStateException("기록 오류");
+            }
+        };
     }
 
     private MedicalDocument reloadDocument() {

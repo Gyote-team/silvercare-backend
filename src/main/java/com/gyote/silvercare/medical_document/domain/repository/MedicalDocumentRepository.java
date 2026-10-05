@@ -132,7 +132,7 @@ public interface MedicalDocumentRepository extends JpaRepository<MedicalDocument
                     )
                 END AS "jobStatus",
                 latest_explanation.result_status AS "resultStatus",
-                COALESCE(latest_run.retryable, FALSE) AS "retryable"
+                COALESCE(latest_run.retryable, latest_analysis.retryable, FALSE) AS "retryable"
             FROM documents d
             LEFT JOIN visits v ON v.id = d.visit_id
             LEFT JOIN document_analyses latest_analysis

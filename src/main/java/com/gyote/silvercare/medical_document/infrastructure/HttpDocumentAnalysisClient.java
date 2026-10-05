@@ -40,12 +40,17 @@ public class HttpDocumentAnalysisClient implements DocumentAnalysisPort {
     @Override
     public DocumentAnalysisResult requestAnalysis(DocumentAnalysisRequest request) {
         try {
-            restClient.post()
+            HttpStatusCode status = restClient.post()
                     .uri(ANALYZE_PATH, request.documentId())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(request)
                     .retrieve()
-                    .toBodilessEntity();
+                    .toBodilessEntity()
+                    .getStatusCode();
+            // 3xx는 예외 없이 돌아오므로 2xx가 아니면 여기서 실패로 분류합니다.
+            if (!status.is2xxSuccessful()) {
+                return failure(request, classifyStatus(status), status.value());
+            }
             return DocumentAnalysisResult.success();
         } catch (RestClientResponseException e) {
             return failure(request, classifyStatus(e.getStatusCode()), e.getStatusCode().value());
@@ -58,6 +63,9 @@ public class HttpDocumentAnalysisClient implements DocumentAnalysisPort {
         int code = status.value();
         if (code == 401 || code == 403) {
             return AnalysisFailureType.INTERNAL_AUTH_FAILED;
+        }
+        if (code == 408) {
+            return AnalysisFailureType.AI_TIMEOUT;
         }
         if (code == 429 || status.is5xxServerError()) {
             return AnalysisFailureType.AI_UNAVAILABLE;

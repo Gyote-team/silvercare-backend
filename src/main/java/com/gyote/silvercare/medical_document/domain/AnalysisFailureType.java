@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum AnalysisFailureType {
 
-    /** 응답 시간 초과 */
+    /** 응답 시간 초과, 408 */
     AI_TIMEOUT(true, "AI 서버 응답 시간이 초과되었습니다."),
 
     /** 연결 실패, 5xx, 429 */
@@ -17,7 +17,7 @@ public enum AnalysisFailureType {
     /** 401, 403 */
     INTERNAL_AUTH_FAILED(false, "AI 서버 내부 인증에 실패했습니다."),
 
-    /** 그 외 4xx */
+    /** 그 외 4xx, 3xx */
     AI_REQUEST_REJECTED(false, "AI 서버가 분석 요청을 거절했습니다.");
 
     private final boolean retryable;
