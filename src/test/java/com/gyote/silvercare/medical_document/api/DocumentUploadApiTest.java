@@ -98,19 +98,20 @@ class DocumentUploadApiTest {
     @Test
     void uploadIsCreatedThenOkForSameKeyAndUnauthorizedWithoutLogin() throws Exception {
         String key = "api-" + UUID.randomUUID();
+        MockMultipartFile file = pdfFile();
 
-        String created = mvc.perform(uploadRequest(key).cookie(loginCookies))
+        String created = mvc.perform(uploadRequest(key, file).cookie(loginCookies))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.documentStatus").value("UPLOADED"))
                 .andExpect(jsonPath("$.latestAiJobStatus").value("QUEUED"))
                 .andReturn().getResponse().getContentAsString();
         String documentId = JsonPath.read(created, "$.documentId");
 
-        mvc.perform(uploadRequest(key).cookie(loginCookies))
+        mvc.perform(uploadRequest(key, file).cookie(loginCookies))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.documentId").value(documentId));
 
-        mvc.perform(uploadRequest(key))
+        mvc.perform(uploadRequest(key, file))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -157,8 +158,8 @@ class DocumentUploadApiTest {
                 .andExpect(jsonPath("$.code").value(code));
     }
 
-    private MockHttpServletRequestBuilder uploadRequest(String key) throws IOException {
-        return upload(visitId, pdfFile()).header("Idempotency-Key", key);
+    private MockHttpServletRequestBuilder uploadRequest(String key, MockMultipartFile file) {
+        return upload(visitId, file).header("Idempotency-Key", key);
     }
 
     /** Idempotency-Key 없이 파일만 담은 업로드 요청을 만듭니다. */

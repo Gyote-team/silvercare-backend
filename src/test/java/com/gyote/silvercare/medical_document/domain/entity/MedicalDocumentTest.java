@@ -12,6 +12,7 @@ class MedicalDocumentTest {
 
     private static final UUID DOCUMENT_ID = UUID.randomUUID();
     private static final String STORAGE_KEY = "documents/" + DOCUMENT_ID + "/original.pdf";
+    private static final String CONTENT_SHA256 = "a".repeat(64);
 
     @Test
     void uploadedWithIdKeepsGivenIdAndUploadFields() {
@@ -25,10 +26,15 @@ class MedicalDocumentTest {
         assertThat(document.getIdempotencyKey()).isEqualTo("idem-key-1");
     }
 
+    @Test
+    void uploadedWithIdKeepsContentSha256() {
+        assertThat(uploadedDocument().getContentSha256()).isEqualTo(CONTENT_SHA256);
+    }
+
     private MedicalDocument uploadedDocument() {
         return MedicalDocument.uploadedWithId(
                 DOCUMENT_ID, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 "검사결과.pdf", STORAGE_KEY, "application/pdf", 1024L,
-                "request-1", "idem-key-1", DocumentType.LAB_RESULT);
+                "request-1", "idem-key-1", DocumentType.LAB_RESULT, CONTENT_SHA256);
     }
 }

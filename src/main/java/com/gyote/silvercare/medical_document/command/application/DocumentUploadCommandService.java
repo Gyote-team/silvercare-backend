@@ -18,9 +18,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -63,12 +66,13 @@ public class DocumentUploadCommandService {
         checkIdempotencyKey(command.idempotencyKey());
         DocumentType declaredDocType = toDeclaredDocType(command.declaredDocType());
         UUID patientId = requireUploadablePatientId(me, command.visitId());
-        Optional<DocumentUploadResult> replay = findReplay(me, command);
+        String contentSha256 = sha256Hex(command.content());
+        Optional<DocumentUploadResult> replay = findReplay(me, command, contentSha256);
         if (replay.isPresent()) {
             return replay.get();
         }
         DocumentFileType fileType = validator.validate(command.content());
-        MedicalDocument document = newDocument(me, patientId, command, declaredDocType, fileType);
+        MedicalDocument document = newDocument(me, patientId, command, declaredDocType, fileType, contentSha256);
         storeOriginal(document, command.content());
         return saveOrReplay(me, command, document);
     }
@@ -100,13 +104,29 @@ public class DocumentUploadCommandService {
         return patientId;
     }
 
-    private Optional<DocumentUploadResult> findReplay(User me, DocumentUploadCommand command) {
-        return documents.findByUploaderUserIdAndIdempotencyKey(me.getId(), command.idempotencyKey())
-                .map(existing -> toReplayResult(existing, command.visitId()));
+    // 파일 내용의 SHA-256을 소문자 hex 64자로 반환합니다. 내용이 없으면 null이며, 그 경우는 뒤의 파일 검사가 거절합니다.
+    private static String sha256Hex(byte[] content) {
+        if (content == null) {
+            return null;
+        }
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
-    private DocumentUploadResult toReplayResult(MedicalDocument existing, UUID visitId) {
+    private Optional<DocumentUploadResult> findReplay(User me, DocumentUploadCommand command, String contentSha256) {
+        return documents.findByUploaderUserIdAndIdempotencyKey(me.getId(), command.idempotencyKey())
+                .map(existing -> toReplayResult(existing, command.visitId(), contentSha256));
+    }
+
+    private DocumentUploadResult toReplayResult(MedicalDocument existing, UUID visitId, String contentSha256) {
         if (!existing.getVisitId().equals(visitId)) {
+            throw new BusinessException(MedicalDocumentErrorCode.IDEMPOTENCY_KEY_CONFLICT);
+        }
+        // 해시 컬럼이 생기기 전에 올린 문서(null)는 비교하지 않습니다.
+        if (existing.getContentSha256() != null && !existing.getContentSha256().equals(contentSha256)) {
             throw new BusinessException(MedicalDocumentErrorCode.IDEMPOTENCY_KEY_CONFLICT);
         }
         if (existing.isDeleted()) {
@@ -129,14 +149,16 @@ public class DocumentUploadCommandService {
             UUID patientId,
             DocumentUploadCommand command,
             DocumentType declaredDocType,
-            DocumentFileType fileType
+            DocumentFileType fileType,
+            String contentSha256
     ) {
         UUID documentId = UUID.randomUUID();
         String storageKey = "documents/" + documentId + "/original." + fileType.getExtension();
         return MedicalDocument.uploadedWithId(
                 documentId, patientId, command.visitId(), me.getId(),
                 toFileName(command.fileName(), fileType), storageKey, fileType.getMimeType(),
-                command.content().length, newRequestId(), command.idempotencyKey(), declaredDocType);
+                command.content().length, newRequestId(), command.idempotencyKey(), declaredDocType,
+                contentSha256);
     }
 
     private static String toFileName(String original, DocumentFileType fileType) {
@@ -176,7 +198,7 @@ public class DocumentUploadCommandService {
         } catch (DataIntegrityViolationException e) {
             // 같은 키로 동시에 들어온 요청이 먼저 저장된 경우입니다. 방금 올린 원본을 지우고 먼저 저장된 결과를 돌려줍니다.
             deleteOriginal(document.getStorageKey());
-            return findReplay(me, command).orElseThrow(() -> e);
+            return findReplay(me, command, document.getContentSha256()).orElseThrow(() -> e);
         } catch (RuntimeException e) {
             deleteOriginal(document.getStorageKey());
             throw e;

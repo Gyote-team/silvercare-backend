@@ -6,6 +6,7 @@ import com.gyote.silvercare.medical_document.api.dto.response.DocumentUploadResp
 import com.gyote.silvercare.medical_document.api.mapper.MedicalDocumentResponseMapper;
 import com.gyote.silvercare.medical_document.command.application.DocumentUploadCommand;
 import com.gyote.silvercare.medical_document.command.application.DocumentUploadCommandService;
+import com.gyote.silvercare.medical_document.command.application.DocumentUploadLimiter;
 import com.gyote.silvercare.medical_document.command.application.DocumentUploadResult;
 import com.gyote.silvercare.medical_document.command.application.MedicalDocumentCommandService;
 import com.gyote.silvercare.medical_document.query.application.MedicalDocumentQueryService;
@@ -33,24 +34,27 @@ public class MedicalDocumentCommandController {
     private final MedicalDocumentQueryService queries;
     private final MedicalDocumentCommandService commands;
     private final DocumentUploadCommandService uploads;
+    private final DocumentUploadLimiter limiter;
     private final MedicalDocumentResponseMapper responseMapper;
 
     public MedicalDocumentCommandController(
             MedicalDocumentQueryService queries,
             MedicalDocumentCommandService commands,
             DocumentUploadCommandService uploads,
+            DocumentUploadLimiter limiter,
             MedicalDocumentResponseMapper responseMapper
     ) {
         this.queries = queries;
         this.commands = commands;
         this.uploads = uploads;
+        this.limiter = limiter;
         this.responseMapper = responseMapper;
     }
 
     /**
      * 방문에 의료 문서 원본(JPEG·PNG·PDF)을 업로드하는 API입니다. 새로 만들면 201, 같은 Idempotency-Key 재요청이면 200입니다.
      * 형식은 파일 내용으로 판정하며 파일 파트의 Content-Type은 보지 않습니다.
-     * 오류: 400(요청 값·키·문서 유형), 401(비로그인), 403(권한 없음), 404(방문 없음), 409(키 충돌), 413(크기 초과), 415(형식·비밀번호 PDF), 503(저장소 장애).
+     * 오류: 400(요청 값·키·문서 유형), 401(비로그인), 403(권한 없음), 404(방문 없음), 409(키 충돌), 413(크기 초과), 415(형식·비밀번호 PDF), 503(저장소 장애·업로드 몰림).
      */
     @PostMapping(value = "/api/visits/{visitId}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<DocumentUploadResponseDto> upload(
@@ -61,9 +65,9 @@ public class MedicalDocumentCommandController {
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
     ) {
         User me = queries.requireUser(kakaoId(user));
-        DocumentUploadResult result = uploads.upload(me, new DocumentUploadCommand(
+        DocumentUploadResult result = limiter.run(() -> uploads.upload(me, new DocumentUploadCommand(
                 visitId, idempotencyKey, declaredDocType,
-                file.getOriginalFilename(), readBytes(file)));
+                file.getOriginalFilename(), readBytes(file))));
         HttpStatus status = result.created() ? HttpStatus.CREATED : HttpStatus.OK;
         return ResponseEntity.status(status).body(responseMapper.toUploadResponse(result));
     }

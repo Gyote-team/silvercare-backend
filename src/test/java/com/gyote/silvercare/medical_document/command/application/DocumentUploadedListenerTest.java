@@ -317,7 +317,7 @@ class DocumentUploadedListenerTest {
         return documents.saveAndFlush(MedicalDocument.uploadedWithId(
                 id, patientId, UUID.randomUUID(), patient.getId(),
                 "검사결과.pdf", "documents/" + id + "/original.pdf", "application/pdf", 1024L,
-                "upload-20261003-abcd1234", "listener-key", null));
+                "upload-20261003-abcd1234", "listener-key", null, null));
     }
 
     /**

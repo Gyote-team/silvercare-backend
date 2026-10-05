@@ -68,6 +68,7 @@ silvercare:
       max-bytes: 20971520
       max-pdf-pages: 30
       max-image-pixels: 40000000
+      max-concurrent: 4
   storage:
     local-root: ${STORAGE_LOCAL_ROOT:./data/object-storage}
   ai:

@@ -33,6 +33,6 @@ class MedicalDocumentResponseMapperTest {
         return MedicalDocument.uploadedWithId(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 "검사결과.pdf", "documents/test/original.pdf", "application/pdf", 10L,
-                "upload-20261003-abcd1234", "key-1", null);
+                "upload-20261003-abcd1234", "key-1", null, null);
     }
 }

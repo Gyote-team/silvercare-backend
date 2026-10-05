@@ -62,6 +62,10 @@ public class MedicalDocument {
     @Column(name = "file_size_bytes", nullable = false)
     private long fileSizeBytes;
 
+    // 파일 내용의 SHA-256(소문자 hex 64자)입니다. 이 컬럼이 생기기 전에 올린 문서는 null입니다.
+    @Column(name = "content_sha256", length = 64)
+    private String contentSha256;
+
     @Column(name = "request_id", length = 64)
     private String requestId;
 
@@ -105,7 +109,7 @@ public class MedicalDocument {
             String requestId
     ) {
         return uploadedWithId(null, patientId, visitId, uploaderUserId, fileName, storageKey,
-                mimeType, fileSizeBytes, requestId, null, null);
+                mimeType, fileSizeBytes, requestId, null, null, null);
     }
 
     /** id를 미리 정해서 업로드 직후 문서를 만듭니다. storage key에 문서 id를 넣어야 할 때 사용합니다. */
@@ -120,13 +124,15 @@ public class MedicalDocument {
             long fileSizeBytes,
             String requestId,
             String idempotencyKey,
-            DocumentType declaredDocType
+            DocumentType declaredDocType,
+            String contentSha256
     ) {
         MedicalDocument document = new MedicalDocument();
         document.id = id;
         document.assignOwner(patientId, visitId, uploaderUserId);
         document.assignFile(fileName, storageKey, mimeType, fileSizeBytes);
         document.assignUploadRequest(requestId, idempotencyKey, declaredDocType);
+        document.contentSha256 = contentSha256;
         document.documentType = DocumentType.UNKNOWN;
         document.status = DocumentStatus.UPLOADED;
         return document;

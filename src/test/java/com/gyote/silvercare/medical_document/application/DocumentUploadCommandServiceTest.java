@@ -193,6 +193,28 @@ class DocumentUploadCommandServiceTest {
     }
 
     @Test
+    void sameKeyWithDifferentFileIsConflict() {
+        uploads.upload(patient, command(visitId, KEY));
+
+        assertErrorCode(() -> uploads.upload(patient, command("사진.png", png())),
+                MedicalDocumentErrorCode.IDEMPOTENCY_KEY_CONFLICT);
+
+        assertThat(documents.count()).isEqualTo(1);
+        assertThat(storage.stored).hasSize(1);
+    }
+
+    @Test
+    void sameKeyWithNullHashReturnsExistingWithoutComparing() {
+        MedicalDocument existing = saveDocumentWithoutHash();
+
+        DocumentUploadResult result = uploads.upload(patient, command(visitId, KEY));
+
+        assertThat(result.created()).isFalse();
+        assertThat(result.document().getId()).isEqualTo(existing.getId());
+        assertThat(storage.stored).isEmpty();
+    }
+
+    @Test
     void differentUsersWithSameKeyEachCreateDocument() {
         DocumentUploadResult byPatient = uploads.upload(patient, command(visitId, KEY));
         DocumentUploadResult byCaregiver = uploads.upload(caregiver, command(visitId, KEY));
@@ -311,6 +333,17 @@ class DocumentUploadCommandServiceTest {
     }
 
     @Test
+    void failedCompensationOnConcurrentSameKeyStillReturnsWinner() {
+        storage.failOnDelete = true;
+        DocumentUploadCommandService racing = uploadService(conflictingSaver(true));
+
+        DocumentUploadResult result = racing.upload(patient, command(visitId, KEY));
+
+        assertThat(result.created()).isFalse();
+        assertThat(result.document().getId()).isEqualTo(winner.getId());
+    }
+
+    @Test
     void integrityViolationWithoutSameKeyDocumentIsRethrown() {
         DocumentUploadCommandService racing = uploadService(conflictingSaver(false));
 
@@ -391,7 +424,15 @@ class DocumentUploadCommandServiceTest {
         return MedicalDocument.uploadedWithId(
                 UUID.randomUUID(), source.getPatientId(), source.getVisitId(), source.getUploaderUserId(),
                 "먼저.pdf", "documents/duplicate/original.pdf", PDF_MIME, 1L,
-                "upload-duplicate", source.getIdempotencyKey(), null);
+                "upload-duplicate", source.getIdempotencyKey(), null, null);
+    }
+
+    /** 해시 컬럼이 생기기 전에 올린 것처럼, 기본 방문·키에 contentSha256이 null인 문서를 저장해 반환합니다. */
+    private MedicalDocument saveDocumentWithoutHash() {
+        return documents.saveAndFlush(MedicalDocument.uploadedWithId(
+                UUID.randomUUID(), patientId, visitId, patient.getId(),
+                "예전.pdf", "documents/legacy/original.pdf", PDF_MIME, 1L,
+                "upload-legacy", KEY, null, null));
     }
 
     private DocumentUploadCommand command(UUID visitId, String key) {

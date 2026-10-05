@@ -1,5 +1,6 @@
 package com.gyote.silvercare.global.exception;
 
+import com.gyote.silvercare.medical_document.error.MedicalDocumentErrorCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -26,7 +27,7 @@ public class GlobalExceptionHandler {
     /** multipart 크기 한도를 넘은 요청을 413 FILE_TOO_LARGE 응답으로 바꿔 반환합니다. */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponse> handleFileTooLarge(MaxUploadSizeExceededException exception) {
-        ErrorCode errorCode = GlobalErrorCode.FILE_TOO_LARGE;
+        ErrorCode errorCode = MedicalDocumentErrorCode.FILE_TOO_LARGE;
         return ResponseEntity.status(errorCode.status()).body(ErrorResponse.of(errorCode));
     }
 

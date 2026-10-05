@@ -24,7 +24,7 @@ class GlobalExceptionHandlerTest {
         var response = handler.handleFileTooLarge(new MaxUploadSizeExceededException(1L));
 
         assertThat(response.getStatusCode().value()).isEqualTo(413);
-        assertThat(response.getBody().code()).isEqualTo("GLOBAL_004");
+        assertThat(response.getBody().code()).isEqualTo("MEDICAL_DOCUMENT_009");
     }
 
     @Test
