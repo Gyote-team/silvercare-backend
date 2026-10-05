@@ -8,7 +8,6 @@ import com.gyote.silvercare.patient.domain.Patient;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.user.api.dto.response.WithdrawalResponse;
 import com.gyote.silvercare.user.domain.User;
-import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.UserStatus;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
 import com.gyote.silvercare.user.error.UserErrorCode;
@@ -17,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.stream.Stream;
 
 /** 회원 탈퇴와 함께 활성 연결은 해제하고 대기 중인 연결 요청은 취소한다. */
 @Service
@@ -57,16 +57,15 @@ public class UserWithdrawalService {
         return new WithdrawalResponse(UserStatus.WITHDRAWN, activeRelations.size());
     }
 
+    /** 역할과 무관하게 돌보는 쪽과 돌봄받는 쪽 연결을 모두 모은다. */
     private List<CareRelation> relationsFor(User user, CareRelationStatus status) {
-        if (user.getRole() == UserRole.CAREGIVER) {
-            return relations.findByCaregiverIdAndStatus(user.getId(), status);
-        }
-        if (user.getRole() == UserRole.PATIENT) {
-            return patients.findByUserId(user.getId())
-                    .map(Patient::getId)
-                    .map(patientId -> relations.findByPatientIdAndStatus(patientId, status))
-                    .orElseGet(List::of);
-        }
-        return List.of();
+        List<CareRelation> asPatient = patients.findByUserId(user.getId())
+                .map(Patient::getId)
+                .map(patientId -> relations.findByPatientIdAndStatus(patientId, status))
+                .orElseGet(List::of);
+        List<CareRelation> asCaregiver = relations.findByCaregiverIdAndStatus(user.getId(), status);
+        return Stream.concat(asPatient.stream(), asCaregiver.stream())
+                .distinct()
+                .toList();
     }
 }

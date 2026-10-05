@@ -70,6 +70,23 @@ class UserWithdrawalServiceTest {
     }
 
     @Test
+    void multiRoleWithdrawalEndsRelationsOnBothSidesRegardlessOfRole() {
+        User user = saveUser("multi-role-kakao", UserRole.CAREGIVER);
+        Patient ownProfile = savePatient(user, "GHI789");
+        Patient caredPatient = savePatient(saveUser("cared-kakao", UserRole.CAREGIVER), "JKL012");
+        CareRelation caringFor = saveRelation(caredPatient.getId(), user, CareRelationStatus.ACTIVE);
+        CareRelation caredBy = saveRelation(ownProfile.getId(), saveUser("family-kakao", UserRole.CAREGIVER), CareRelationStatus.ACTIVE);
+        CareRelation pendingForMe = saveRelation(ownProfile.getId(), saveUser("pending-kakao", UserRole.PATIENT), CareRelationStatus.REQUESTED);
+
+        WithdrawalResponse response = service().withdraw(user.getKakaoId(), true);
+
+        assertThat(response.revokedRelationCount()).isEqualTo(2);
+        assertThat(caringFor.getStatus()).isEqualTo(CareRelationStatus.REVOKED);
+        assertThat(caredBy.getStatus()).isEqualTo(CareRelationStatus.REVOKED);
+        assertThat(pendingForMe.getStatus()).isEqualTo(CareRelationStatus.CANCELED);
+    }
+
+    @Test
     void withdrawalRequiresExplicitConfirmation() {
         User user = saveUser("patient-kakao", UserRole.PATIENT);
 
