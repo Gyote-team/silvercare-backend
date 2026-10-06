@@ -2,25 +2,45 @@ package com.gyote.silvercare.medical_document.query.application;
 
 import com.gyote.silvercare.care_relation.domain.CareRelationStatus;
 import com.gyote.silvercare.care_relation.domain.repository.CareRelationRepository;
+import com.gyote.silvercare.care_relation.domain.repository.ConsentRepository;
 import com.gyote.silvercare.global.exception.BusinessException;
 import com.gyote.silvercare.medical_document.error.AiDocumentErrorCode;
 import com.gyote.silvercare.patient.domain.Patient;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.time.Instant;
 
 @Service
 @Transactional(readOnly = true)
-@RequiredArgsConstructor
 public class CareRelationPermissionService {
 
     private final PatientRepository patients;
     private final CareRelationRepository relations;
+    private final ConsentRepository consents;
+
+    @Autowired
+    public CareRelationPermissionService(
+            PatientRepository patients,
+            CareRelationRepository relations,
+            ConsentRepository consents
+    ) {
+        this.patients = patients;
+        this.relations = relations;
+        this.consents = consents;
+    }
+
+    /** 기존 단위 테스트와 레거시 조립 경로를 위한 호환 생성자입니다. */
+    public CareRelationPermissionService(PatientRepository patients, CareRelationRepository relations) {
+        this.patients = patients;
+        this.relations = relations;
+        this.consents = null;
+    }
 
     /** 요청 조건과 사용자 역할을 기준으로 조회 대상 환자를 결정한다. */
     public UUID resolveTargetPatient(User actor, UUID requestedPatientId) {
@@ -61,12 +81,12 @@ public class CareRelationPermissionService {
 
     /** 보호자와 환자 사이에 활성화된 돌봄 관계가 있는지 검증한다. */
     private void requireCaregiverAccess(User caregiver, UUID patientId) {
+        var relation = relations.findFirstByPatientIdAndCaregiverIdAndStatus(
+                patientId, caregiver.getId(), CareRelationStatus.ACTIVE
+        );
         if (!patients.existsById(patientId)
-                || !relations.existsByPatientIdAndCaregiverIdAndStatus(
-                patientId,
-                caregiver.getId(),
-                CareRelationStatus.ACTIVE
-        )) {
+                || relation.isEmpty()
+                || (consents != null && !consents.hasDocumentAndSummaryConsent(relation.get().getId(), Instant.now()))) {
             throw new BusinessException(AiDocumentErrorCode.DOCUMENT_ACCESS_DENIED);
         }
     }
