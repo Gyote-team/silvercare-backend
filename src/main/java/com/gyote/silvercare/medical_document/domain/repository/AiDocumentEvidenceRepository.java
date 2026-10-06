@@ -93,7 +93,7 @@ public interface AiDocumentEvidenceRepository extends Repository<AiExplanation, 
                 LEFT JOIN extracted_items ex2 ON ex2.id = ei2.extracted_item_id
                 LEFT JOIN document_chunks dc2 ON dc2.id = ec2.chunk_id
                 WHERE ec2.anchor_id = :anchorId
-                  AND (ec2.page_id = dp.id OR dc2.page_id = dp.id)
+                  AND (ec2.page_id = dp.id OR ex2.page_id = dp.id OR dc2.page_id = dp.id)
                 ORDER BY ec2.created_at, ec2.id
                 LIMIT 1
             ) AS VARCHAR) AS "sourceBox",

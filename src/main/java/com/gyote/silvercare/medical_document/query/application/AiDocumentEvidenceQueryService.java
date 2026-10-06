@@ -172,9 +172,10 @@ public class AiDocumentEvidenceQueryService {
 
     /** 공백 차이만 허용하고, 값 누락은 불일치로 처리합니다. */
     private static boolean same(String left, String right) {
-        return left != null
-                && right != null
-                && left.replaceAll("\\s+", "").equals(right.replaceAll("\\s+", ""));
+        if (left == null || right == null) {
+            return left == null && right == null;
+        }
+        return left.replaceAll("\\s+", "").equals(right.replaceAll("\\s+", ""));
     }
 
     /** 화면 계약에서 사용하는 검사값 이름으로 변환합니다. */
