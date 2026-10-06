@@ -45,6 +45,11 @@ public class MedicalDocumentAccessPolicy {
         }
     }
 
+    /** 업로드 가능 여부를 반환합니다. 기준은 열람과 같아 개인은 본인, 보호자는 ACTIVE 연결된 개인만 true입니다. */
+    public boolean canUpload(User actor, UUID patientId) {
+        return canRead(actor, patientId);
+    }
+
     /** 삭제 가능 여부를 반환합니다. 개인은 본인 문서, 보호자는 ACTIVE 연결된 개인의 문서 중 본인이 올린 문서만 true입니다. */
     public boolean canDelete(User me, MedicalDocument document) {
         return switch (me.getRole()) {

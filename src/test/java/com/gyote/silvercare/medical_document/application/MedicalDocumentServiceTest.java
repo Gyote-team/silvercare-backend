@@ -7,6 +7,7 @@ import com.gyote.silvercare.global.exception.BusinessException;
 import com.gyote.silvercare.global.status.AiJobStatus;
 import com.gyote.silvercare.global.status.ResultStatus;
 import com.gyote.silvercare.medical_document.command.application.MedicalDocumentCommandService;
+import com.gyote.silvercare.medical_document.domain.DocumentStoragePort;
 import com.gyote.silvercare.medical_document.domain.entity.MedicalDocument;
 import com.gyote.silvercare.medical_document.domain.MedicalDocumentAccessPolicy;
 import com.gyote.silvercare.medical_document.domain.MedicalDocumentDeletedEvent;
@@ -28,6 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -82,7 +84,20 @@ class MedicalDocumentServiceTest {
         MedicalDocumentAccessPolicy accessPolicy = new MedicalDocumentAccessPolicy(relations, patients);
         queries = new MedicalDocumentQueryService(
                 documents, users, new UserQueryService(users), patients, accessPolicy,
-                (storageKey, ttl) -> "https://storage.test/" + storageKey);
+                new DocumentStoragePort() {
+                    @Override
+                    public String createSignedUrl(String storageKey, Duration ttl) {
+                        return "https://storage.test/" + storageKey;
+                    }
+
+                    @Override
+                    public void storeOriginal(String storageKey, byte[] content, String mimeType) {
+                    }
+
+                    @Override
+                    public void deleteOriginal(String storageKey) {
+                    }
+                });
         publishedEvents = new ArrayList<>();
         commands = new MedicalDocumentCommandService(documents, accessPolicy, publishedEvents::add);
 
