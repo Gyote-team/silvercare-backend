@@ -36,6 +36,12 @@ public interface CareRelationRepository extends JpaRepository<CareRelation, UUID
             CareRelationStatus status
     );
 
+    Optional<CareRelation> findFirstByPatientIdAndCaregiverIdAndStatus(
+            UUID patientId,
+            UUID caregiverId,
+            CareRelationStatus status
+    );
+
     /** 사용자 행을 잠그기 전에 관계 엔티티를 영속성 컨텍스트에 올리지 않고 당사자만 조회한다. */
     @Query("select r.patientId as patientId, r.caregiverId as caregiverId from CareRelation r where r.id = :id")
     Optional<Participants> findParticipantsById(@Param("id") UUID id);

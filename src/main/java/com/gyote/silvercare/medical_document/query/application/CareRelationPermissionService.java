@@ -8,7 +8,6 @@ import com.gyote.silvercare.patient.domain.Patient;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;
 import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,11 +15,17 @@ import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
-@RequiredArgsConstructor
 public class CareRelationPermissionService {
 
     private final PatientRepository patients;
     private final CareRelationRepository relations;
+    public CareRelationPermissionService(
+            PatientRepository patients,
+            CareRelationRepository relations
+    ) {
+        this.patients = patients;
+        this.relations = relations;
+    }
 
     /** 요청 조건과 사용자 역할을 기준으로 조회 대상 환자를 결정한다. */
     public UUID resolveTargetPatient(User actor, UUID requestedPatientId) {
@@ -61,12 +66,11 @@ public class CareRelationPermissionService {
 
     /** 보호자와 환자 사이에 활성화된 돌봄 관계가 있는지 검증한다. */
     private void requireCaregiverAccess(User caregiver, UUID patientId) {
+        var relation = relations.findFirstByPatientIdAndCaregiverIdAndStatus(
+                patientId, caregiver.getId(), CareRelationStatus.ACTIVE
+        );
         if (!patients.existsById(patientId)
-                || !relations.existsByPatientIdAndCaregiverIdAndStatus(
-                patientId,
-                caregiver.getId(),
-                CareRelationStatus.ACTIVE
-        )) {
+                || relation.isEmpty()) {
             throw new BusinessException(AiDocumentErrorCode.DOCUMENT_ACCESS_DENIED);
         }
     }

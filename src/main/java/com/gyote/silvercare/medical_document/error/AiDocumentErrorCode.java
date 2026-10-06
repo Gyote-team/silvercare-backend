@@ -11,7 +11,8 @@ public enum AiDocumentErrorCode implements ErrorCode {
     EXPLANATION_NOT_READY(HttpStatus.CONFLICT, "AI_DOCUMENT_005", "AI 설명이 아직 준비되지 않았습니다."),
     INVALID_SECTION_TYPE(HttpStatus.BAD_REQUEST, "AI_DOCUMENT_006", "지원하지 않는 설명 섹션입니다."),
     INVALID_PAGE_REQUEST(HttpStatus.BAD_REQUEST, "AI_DOCUMENT_007", "페이지 요청 값이 올바르지 않습니다."),
-    INVALID_FILTER(HttpStatus.BAD_REQUEST, "AI_DOCUMENT_008", "문서 조회 조건이 올바르지 않습니다.");
+    INVALID_FILTER(HttpStatus.BAD_REQUEST, "AI_DOCUMENT_008", "문서 조회 조건이 올바르지 않습니다."),
+    PAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "AI_DOCUMENT_009", "요청한 문서 페이지를 찾을 수 없습니다.");
 
     private final HttpStatus status;
     private final String code;
