@@ -75,6 +75,22 @@ class AiDocumentEvidenceQueryServiceTest {
     }
 
     @Test
+    void factsUseSeparateValueAndUnitMatchingRules() {
+        AiDocumentFactRow unitlessMatched = factWithUnits("fact-unitless", "진단명", "저나트륨혈증", "저나트륨혈증", null, null, 1);
+        AiDocumentFactRow missingValue = factWithUnits("fact-missing", "진단명", null, null, null, null, 1);
+        AiDocumentFactRow oneSidedValue = factWithUnits("fact-one-sided", "진단명", "저나트륨혈증", null, null, null, 1);
+        when(evidence.findFacts(documentId)).thenReturn(List.of(unitlessMatched, missingValue, oneSidedValue));
+
+        var result = service.facts(actor, documentId);
+
+        assertThat(result.items()).extracting(AiDocumentFactsResponseDto.FactItem::validationStatus)
+                .containsExactly("MATCHED", "MISMATCHED", "MISMATCHED");
+        assertThat(result.items().get(0).displayValue()).isEqualTo("저나트륨혈증");
+        assertThat(result.items().get(1).displayValue()).isNull();
+        assertThat(result.items().get(2).displayValue()).isNull();
+    }
+
+    @Test
     void citationsExposeCoordinatesAndIgnoreMalformedCoordinateJson() {
         AiDocumentCitationRow valid = citation("citation-1", "{\"x\":10,\"y\":20,\"width\":30,\"height\":40}");
         AiDocumentCitationRow malformed = citation("citation-2", "not-json");
@@ -143,13 +159,20 @@ class AiDocumentEvidenceQueryServiceTest {
     private AiDocumentFactRow fact(
             String id, String type, String display, String original, String unit, int pageNo
     ) {
+        return factWithUnits(id, type, display, original, unit, unit, pageNo);
+    }
+
+    private AiDocumentFactRow factWithUnits(
+            String id, String type, String display, String original,
+            String displayUnit, String originalUnit, int pageNo
+    ) {
         AiDocumentFactRow row = mock(AiDocumentFactRow.class);
         when(row.getFactId()).thenReturn(id);
         when(row.getFactType()).thenReturn(type);
         when(row.getDisplayValue()).thenReturn(display);
         when(row.getOriginalValue()).thenReturn(original);
-        when(row.getDisplayUnit()).thenReturn(unit);
-        when(row.getOriginalUnit()).thenReturn(unit);
+        when(row.getDisplayUnit()).thenReturn(displayUnit);
+        when(row.getOriginalUnit()).thenReturn(originalUnit);
         when(row.getPageNo()).thenReturn(pageNo);
         when(row.getSourceText()).thenReturn("원문 근거");
         when(row.getAnchorId()).thenReturn("anchor-" + id);

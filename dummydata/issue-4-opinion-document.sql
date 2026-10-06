@@ -26,8 +26,6 @@ DECLARE
     caregiver_user_id UUID;
     patient_id UUID;
     caregiver_link_id UUID := '11000000-0000-0000-0000-000000000001';
-    document_consent_id UUID := '11100000-0000-0000-0000-000000000001';
-    summary_consent_id UUID := '11100000-0000-0000-0000-000000000002';
     visit_id UUID := '22000000-0000-0000-0000-000000000001';
     document_id UUID := '33000000-0000-0000-0000-000000000001';
     analysis_id UUID := '44000000-0000-0000-0000-000000000001';
@@ -95,18 +93,6 @@ BEGIN
         relation = EXCLUDED.relation,
         status = EXCLUDED.status,
         accepted_at = EXCLUDED.accepted_at;
-
-    -- 보호자 문서·AI 요약 조회는 활성 동의가 모두 있어야 한다.
-    INSERT INTO consents (id, caregiver_link_id, scope, status, granted_at, expires_at, revoked_at, created_at)
-    VALUES
-        (document_consent_id, caregiver_link_id, 'DOCUMENT', 'ACTIVE', TIMESTAMPTZ '2026-09-27 09:05:00+09', NULL, NULL, TIMESTAMPTZ '2026-09-27 09:05:00+09'),
-        (summary_consent_id, caregiver_link_id, 'SUMMARY', 'ACTIVE', TIMESTAMPTZ '2026-09-27 09:05:00+09', NULL, NULL, TIMESTAMPTZ '2026-09-27 09:05:00+09')
-    ON CONFLICT (id) DO UPDATE SET
-        caregiver_link_id = EXCLUDED.caregiver_link_id,
-        scope = EXCLUDED.scope,
-        status = EXCLUDED.status,
-        expires_at = EXCLUDED.expires_at,
-        revoked_at = EXCLUDED.revoked_at;
 
     INSERT INTO visits (id, patient_id, hospital_name, department, visited_on, status, memo, created_at, updated_at)
     VALUES (

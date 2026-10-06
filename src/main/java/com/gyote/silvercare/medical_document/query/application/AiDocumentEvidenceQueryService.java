@@ -111,8 +111,8 @@ public class AiDocumentEvidenceQueryService {
     private AiDocumentFactsResponseDto.FactItem toFactItem(
             com.gyote.silvercare.medical_document.query.model.AiDocumentFactRow row
     ) {
-        boolean matched = same(row.getDisplayValue(), row.getOriginalValue())
-                && same(row.getDisplayUnit(), row.getOriginalUnit());
+        boolean matched = sameValue(row.getDisplayValue(), row.getOriginalValue())
+                && sameUnit(row.getDisplayUnit(), row.getOriginalUnit());
         return new AiDocumentFactsResponseDto.FactItem(
                 row.getFactId(),
                 factType(row.getFactType()),
@@ -170,8 +170,16 @@ public class AiDocumentEvidenceQueryService {
         permissions.requireDocumentAccess(actor, document.getPatientId());
     }
 
-    /** 공백 차이만 허용하고, 값 누락은 불일치로 처리합니다. */
-    private static boolean same(String left, String right) {
+    /** 값은 양쪽 모두 존재하고 공백을 제외한 내용이 같을 때만 일치로 처리합니다. */
+    private static boolean sameValue(String left, String right) {
+        if (left == null || right == null) {
+            return false;
+        }
+        return left.replaceAll("\\s+", "").equals(right.replaceAll("\\s+", ""));
+    }
+
+    /** 단위가 없는 값은 양쪽 null을 동일한 단위로 처리합니다. */
+    private static boolean sameUnit(String left, String right) {
         if (left == null || right == null) {
             return left == null && right == null;
         }

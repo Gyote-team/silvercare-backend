@@ -11,12 +11,15 @@ import java.nio.file.Path;
 @Configuration
 public class LocalDocumentResourceConfig implements WebMvcConfigurer {
 
+    private static final String DEFAULT_ROOT = "./data/object-storage";
+
     private final String resourceLocation;
 
     public LocalDocumentResourceConfig(
             @Value("${silvercare.storage.local-root:./data/object-storage}") String localRoot
     ) {
-        this.resourceLocation = Path.of(localRoot).toAbsolutePath().normalize().toUri().toString();
+        String effectiveRoot = localRoot == null || localRoot.isBlank() ? DEFAULT_ROOT : localRoot;
+        this.resourceLocation = Path.of(effectiveRoot).toAbsolutePath().normalize().toUri().toString();
     }
 
     @Override
