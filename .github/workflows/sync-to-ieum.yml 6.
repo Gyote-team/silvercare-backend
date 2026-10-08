@@ -18,6 +18,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Create GitHub App token
         id: app-token
@@ -28,9 +29,20 @@ jobs:
           owner: ieum-connect
           repositories: MediBridge_backend
 
+      - name: Build filtered mirror
+        run: |
+          mkdir -p ../mirror-source
+          git archive HEAD | tar -x -C ../mirror-source
+          git switch --orphan mirror
+          git rm -rf . || true
+          cp -R ../mirror-source/. .
+          rm -rf .github/workflows README.md docs
+          git add -A
+          git -c user.name="ieum-sync" -c user.email="ieum-sync[bot]@users.noreply.github.com" commit -m "chore(sync): 소스 코드 동기화"
+
       - name: Push to ieum-connect
         env:
           TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          git remote add destination "https://x-access-token:${TOKEN}@github.com/ieum-connect/MediBridge_backend.git"
-          git push destination HEAD:main --force
+          git remote add destination "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/ieum-connect/MediBridge_backend.git"
+          git push destination HEAD:main --forㅏㄱ
