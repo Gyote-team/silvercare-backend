@@ -1,25 +1,20 @@
 name: Sync to ieum-connect
-
 on:
   push:
     branches:
       - main
-
 concurrency:
   group: sync-medi-bridge-backend
   cancel-in-progress: false
-
 jobs:
   sync:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout source repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
-
       - name: Create GitHub App token
         id: app-token
         uses: actions/create-github-app-token@v3
@@ -28,7 +23,6 @@ jobs:
           private-key: ${{ secrets.IEUM_SYNC_APP_PRIVATE_KEY }}
           owner: ieum-connect
           repositories: MediBridge_backend
-
       - name: Build filtered mirror
         run: |
           mkdir -p ../mirror-source
@@ -39,10 +33,9 @@ jobs:
           rm -rf .github/workflows README.md docs
           git add -A
           git -c user.name="ieum-sync" -c user.email="ieum-sync[bot]@users.noreply.github.com" commit -m "chore(sync): 소스 코드 동기화"
-
       - name: Push to ieum-connect
         env:
           TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           git remote add destination "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/ieum-connect/MediBridge_backend.git"
-          git push destination HEAD:main --forㅏㄱ
+          git push destination HEAD:main --force
