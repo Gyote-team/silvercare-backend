@@ -3,7 +3,7 @@ name: Sync to ieum-connect
 on:
   push:
     branches:
-            - automation/ieum-sync
+      - automation/ieum-sync
 
 concurrency:
   group: sync-medi-bridge-backend
@@ -28,6 +28,7 @@ jobs:
           repositories: MediBridge_backend
       - name: Build filtered mirror
         run: |
+          SOURCE_MESSAGE="$(git log --no-merges -1 --format=%B origin/develop)"
           mkdir -p ../mirror-source
           git archive HEAD | tar -x -C ../mirror-source
           git switch --orphan mirror
@@ -35,10 +36,10 @@ jobs:
           cp -R ../mirror-source/. .
           rm -rf .github/workflows README.md docs
           git add -A
-          git -c user.name="ieum-sync" -c user.email="ieum-sync[bot]@users.noreply.github.com" commit -m "chore: filtered source build"
+          git -c user.name="ieum-sync" -c user.email="ieum-sync[bot]@users.noreply.github.com" commit -m "$SOURCE_MESSAGE"
       - name: Push to ieum-connect
         env:
           TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          git remote add destination "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/ieum-connect/MediBridge_backend.git"
+          git remote add destination "https://x-access-token:${TOKEN}@github.com/ieum-connect/MediBridge_backend.git"
           git push destination HEAD:main --force
