@@ -30,8 +30,6 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
-    # develop에 먼저 적용된 문서 마이그레이션보다 버전이 낮은 계정 전환 마이그레이션도 적용한다.
-    out-of-order: true
   jpa:
     hibernate:
       ddl-auto: validate

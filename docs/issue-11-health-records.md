@@ -78,7 +78,7 @@ HealthRecordApiIntegrationTest(실제 인증 필터·CRUD·세션/JWT 계정 전
 
 - Docker Compose 설정은 변경하지 않는다. PostgreSQL 이미지는 `pgvector/pgvector:pg16`이다.
 - V1/V2/V3를 포함한 develop의 기존 SQL은 수정하지 않는다.
-- 계정 전환의 `V202610052010`은 develop의 `V202610052216`보다 낮다. 이미 develop을 적용한 DB에서도 누락 없이 실행하도록 Flyway `out-of-order: true`를 사용한다. 기존 사용자 행을 보존하고 account_group_id를 채우는 추가 마이그레이션이다.
+- 계정 전환은 미병합 마이그레이션의 번호를 `V202610101700`으로 조정했다. 최신 develop 및 이번 PR의 다른 마이그레이션 뒤에 적용하며 Flyway out-of-order 설정은 사용하지 않는다. SQL 내용은 그대로이며 기존 사용자 행을 보존하고 account_group_id를 채운다.
 - 기존 로컬 `silvercare` DB는 오래된 V1 체크섬(-1425741100)을 갖고 있어 현재 V1(1815981943)과 다르다. 이 환경은 자동 repair나 볼륨 삭제로 해결하지 않는다. 데이터가 필요한 경우 별도 백업 및 변환이 필요하다.
 - 현재 시연 서버는 `DB_URL=jdbc:postgresql://127.0.0.1:5432/silvercare_issue11`을 사용한다. 이 DB에는 V3와 추가 마이그레이션이 모두 적용돼 있다. 이 설정은 로컬 실행 환경이며 저장소의 기본 DB 주소를 바꾸지 않는다.
 - 시스템 알림은 `V202610101630__system_notifications.sql`의 별도 테이블을 사용한다. 기존 복약 발송용 notifications 테이블과 충돌하지 않는다.
@@ -88,6 +88,8 @@ HealthRecordApiIntegrationTest(실제 인증 필터·CRUD·세션/JWT 계정 전
 - 프론트 production build도 통과했다.
 
 ## 시스템 알림 계약
+
+PR 리뷰 후 번호 순서 재검증: out-of-order 설정을 제거하고 계정 전환 파일을 V202610101700으로 옮겼다. 새 PostgreSQL DB 전체 적용 및 기존 develop DB 업그레이드 모두 순서대로 적용되고 서버 기동을 통과했다. 시연용 silvercare_issue11 DB는 동일한 SQL의 적용 이력 version만 변경해 계정·기록을 보존했다. 이미 옛 번호를 적용한 다른 개발 DB도 별도 확인이 필요하며, 팀 공통 마이그레이션에는 이력 변경 SQL을 추가하지 않는다.
 
 `GET /api/notifications`는 현재 역할 계정의 최신 50개 알림과 전체 unreadCount를 반환한다.
 `PATCH /api/notifications/{id}/read`와 `PATCH /api/notifications/read-all`은 204를 반환한다.
