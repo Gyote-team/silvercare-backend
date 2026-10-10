@@ -124,4 +124,27 @@ public class UserAccountService {
         }
         return user;
     }
+
+    /** 이름으로 선택한 시연 계정을 준비한다. 기존 두 계정의 데이터는 유지한다. */
+    @Transactional
+    public User ensureNamedDemoUser(String account) {
+        if ("MINJI".equals(account)) return ensureDemoUser(UserRole.CAREGIVER);
+        if ("SOONJA".equals(account)) return ensureDemoUser(UserRole.PATIENT);
+        String name = switch (account) {
+            case "JIHUN" -> "박지훈";
+            case "SEOYEON" -> "이서연";
+            default -> throw new BusinessException(UserErrorCode.INVALID_ROLE);
+        };
+        String key = User.DEMO_KAKAO_ID_PREFIX + account.toLowerCase(java.util.Locale.ROOT);
+        User user = users.findByKakaoId(key).orElseGet(() -> {
+            User created = new User();
+            created.setKakaoId(key);
+            created.setName(name);
+            created.setRole(UserRole.PATIENT);
+            created.setStatus(UserStatus.ACTIVE);
+            return users.save(created);
+        });
+        ensurePatientProfile(user);
+        return user;
+    }
 }

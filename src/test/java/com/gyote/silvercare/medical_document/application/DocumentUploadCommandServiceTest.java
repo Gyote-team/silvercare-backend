@@ -458,7 +458,7 @@ class DocumentUploadCommandServiceTest {
     }
 
     private void connect(User caregiver, User patient) {
-        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         CareRelation requested = cares.request(caregiver, accounts.patientInviteCode(patient));
         cares.accept(patient, requested.getId());
     }

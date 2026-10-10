@@ -10,7 +10,8 @@ public enum UserErrorCode implements ErrorCode {
     ROLE_ALREADY_SELECTED(HttpStatus.CONFLICT, "USER_004", "역할은 한 번만 선택할 수 있습니다."),
     INVITE_CODE_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "USER_005", "초대 코드를 생성할 수 없습니다."),
     WITHDRAWAL_CONFIRMATION_REQUIRED(HttpStatus.BAD_REQUEST, "USER_006", "회원 탈퇴 확인이 필요합니다."),
-    USER_ALREADY_WITHDRAWN(HttpStatus.CONFLICT, "USER_007", "이미 탈퇴한 회원입니다.");
+    USER_ALREADY_WITHDRAWN(HttpStatus.CONFLICT, "USER_007", "이미 탈퇴한 회원입니다."),
+    ROLE_NOT_SELECTED(HttpStatus.CONFLICT, "USER_008", "역할을 먼저 선택해야 계정을 전환할 수 있습니다.");
 
     private final HttpStatus status;
     private final String code;
