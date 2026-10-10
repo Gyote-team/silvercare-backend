@@ -34,6 +34,11 @@ public class CareRelationCommandService {
     private final CareRelationRepository relations;
     private final PatientRepository patients;
     private final UserRepository users;
+    private org.springframework.context.ApplicationEventPublisher events = event -> {};
+
+    /** 시스템 활동을 같은 트랜잭션의 알림 처리기로 전달한다. */
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setEventPublisher(org.springframework.context.ApplicationEventPublisher events) { this.events = events; }
 
     public CareRelationCommandService(
             CareRelationRepository relations,
@@ -74,7 +79,9 @@ public class CareRelationCommandService {
         created.setPatientId(patient.getId());
         created.setCaregiverId(caregiver.getId());
         created.setStatus(CareRelationStatus.REQUESTED);
-        return relations.save(created);
+        CareRelation saved = relations.save(created);
+        notifyActivity("RELATION_REQUESTED", caregiver, saved);
+        return saved;
     }
 
     /** 관계의 개인이 REQUESTED 연결을 ACTIVE로 수락한다. */
@@ -92,6 +99,7 @@ public class CareRelationCommandService {
         }
         relation.setStatus(CareRelationStatus.ACTIVE);
         relation.setAcceptedAt(Instant.now());
+        notifyActivity("RELATION_ACCEPTED", patient, relation);
         return relation;
     }
 
@@ -104,6 +112,7 @@ public class CareRelationCommandService {
         }
         relation.setStatus(CareRelationStatus.REJECTED);
         relation.setEndedAt(Instant.now());
+        notifyActivity("RELATION_REJECTED", patient, relation);
         return relation;
     }
 
@@ -116,6 +125,7 @@ public class CareRelationCommandService {
         }
         relation.setStatus(CareRelationStatus.CANCELED);
         relation.setEndedAt(Instant.now());
+        notifyActivity("RELATION_CANCELED", caregiver, relation);
         return relation;
     }
 
@@ -133,6 +143,7 @@ public class CareRelationCommandService {
         }
         relation.setStatus(CareRelationStatus.REVOKED);
         relation.setEndedAt(Instant.now());
+        notifyActivity("RELATION_REVOKED", actor, relation);
         return relation;
     }
 
@@ -150,6 +161,11 @@ public class CareRelationCommandService {
             throw new BusinessException(CareRelationErrorCode.RELATION_ACCESS_DENIED);
         }
         return relation;
+    }
+
+    private void notifyActivity(String type, User actor, CareRelation relation) {
+        events.publishEvent(new com.gyote.silvercare.notification.domain.SystemActivityEvent(
+                type, relation.getPatientId(), relation.getCaregiverId(), actor.getId(), relation.getId()));
     }
 
     /**

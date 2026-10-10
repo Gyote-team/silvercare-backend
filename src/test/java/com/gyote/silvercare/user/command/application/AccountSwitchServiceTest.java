@@ -22,6 +22,25 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DataJpaTest
 class AccountSwitchServiceTest {
 
+    @Test
+    void fourNamedDemoAccountsAreDistinctAndCanSwitchBothWays() {
+        UserAccountService accounts = new UserAccountService(users, patients);
+        AccountSwitchService switches = new AccountSwitchService(users, accounts);
+        java.util.Set<java.util.UUID> groups = new java.util.HashSet<>();
+        for (String name : java.util.List.of("MINJI", "SOONJA", "JIHUN", "SEOYEON")) {
+            User demo = accounts.ensureNamedDemoUser(name);
+            assertThat(accounts.ensureNamedDemoUser(name).getId()).isEqualTo(demo.getId());
+            groups.add(demo.getAccountGroupId());
+            User personal = switches.switchTo(demo.getKakaoId(), UserRole.PATIENT);
+            assertThat(accounts.patientInviteCode(personal)).hasSize(6);
+            User caregiver = switches.switchTo(personal.getKakaoId(), UserRole.CAREGIVER);
+            assertThat(caregiver.getAccountGroupId()).isEqualTo(demo.getAccountGroupId());
+            assertThat(switches.switchTo(caregiver.getKakaoId(), UserRole.PATIENT).getId()).isEqualTo(personal.getId());
+        }
+        assertThat(groups).hasSize(4);
+        assertThatThrownBy(() -> accounts.ensureNamedDemoUser("UNKNOWN")).isInstanceOf(BusinessException.class);
+    }
+
     @Autowired
     private UserRepository users;
 
