@@ -1,7 +1,10 @@
 package com.gyote.silvercare.medical_document.api.mapper;
 
+import com.gyote.silvercare.medical_document.api.dto.response.DocumentUploadResponseDto;
 import com.gyote.silvercare.medical_document.api.dto.response.MedicalDocumentDetailResponseDto;
 import com.gyote.silvercare.medical_document.api.dto.response.MedicalDocumentListResponseDto;
+import com.gyote.silvercare.medical_document.command.application.DocumentUploadResult;
+import com.gyote.silvercare.medical_document.domain.entity.MedicalDocument;
 import com.gyote.silvercare.medical_document.query.model.MedicalDocumentPage;
 import com.gyote.silvercare.medical_document.query.model.MedicalDocumentView;
 import org.springframework.stereotype.Component;
@@ -11,7 +14,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 
-/** Application 조회 모델을 HTTP 응답 DTO로 변환합니다. 시각은 +09:00 오프셋으로 내보냅니다. */
+/** 조회 모델과 업로드 결과를 HTTP 응답 DTO로 변환합니다. 시각은 +09:00 오프셋으로 내보냅니다. */
 @Component
 public class MedicalDocumentResponseMapper {
 
@@ -42,6 +45,19 @@ public class MedicalDocumentResponseMapper {
 
     public MedicalDocumentListResponseDto toPageResponse(MedicalDocumentPage page) {
         return new MedicalDocumentListResponseDto(toResponses(page.items()), page.nextCursor());
+    }
+
+    /** 업로드 결과를 업로드 응답 DTO로 변환해 반환합니다. storageKey는 담지 않습니다. */
+    public DocumentUploadResponseDto toUploadResponse(DocumentUploadResult result) {
+        MedicalDocument document = result.document();
+        return new DocumentUploadResponseDto(
+                document.getId(),
+                document.getVisitId(),
+                document.getMimeType(),
+                document.getStatus(),
+                result.latestAiJobStatus(),
+                document.getRequestId()
+        );
     }
 
     private static OffsetDateTime toKst(Instant instant) {
