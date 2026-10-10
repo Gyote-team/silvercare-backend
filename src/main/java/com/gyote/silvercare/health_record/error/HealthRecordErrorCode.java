@@ -1,7 +1,10 @@
 package com.gyote.silvercare.health_record.error;
+
 import com.gyote.silvercare.global.exception.ErrorCode;
+
 import org.springframework.http.HttpStatus;
 
+/** 건강기록 권한·입력·조회·변경 충돌의 공통 오류 코드. */
 public enum HealthRecordErrorCode implements ErrorCode {
     NOT_FOUND(HttpStatus.NOT_FOUND, "HEALTH_RECORD_001", "건강기록을 찾을 수 없습니다."),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "HEALTH_RECORD_002", "이 개인의 건강기록에 접근할 수 없습니다."),
@@ -12,10 +15,22 @@ public enum HealthRecordErrorCode implements ErrorCode {
     private final HttpStatus status;
     private final String code;
     private final String message;
+
     HealthRecordErrorCode(HttpStatus status, String code, String message) {
-        this.status=status; this.code=code; this.message=message;
+        this.status = status;
+        this.code = code;
+        this.message = message;
     }
-    public HttpStatus status() { return status; }
-    public String code() { return code; }
-    public String message() { return message; }
+
+    public HttpStatus status() {
+        return status;
+    }
+
+    public String code() {
+        return code;
+    }
+
+    public String message() {
+        return message;
+    }
 }

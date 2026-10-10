@@ -12,8 +12,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import static org.assertj.core.api.Assertions.*;
-@SpringBootTest @Transactional
+import com.gyote.silvercare.global.auth.application.JwtService;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+@SpringBootTest @Transactional @AutoConfigureMockMvc
 class SystemNotificationTest {
+    @Autowired MockMvc mvc;
+    @Autowired JwtService jwt;
     @Autowired UserAccountService accounts;
     @Autowired AccountSwitchService switches;
     @Autowired CareRelationCommandService cares;
@@ -28,13 +36,29 @@ class SystemNotificationTest {
         personal=accounts.chooseRole(accounts.loginOrRegister("np-"+key,"개인").getKakaoId(),UserRole.PATIENT);
         caregiver=accounts.chooseRole(accounts.loginOrRegister("nc-"+key,"보호자").getKakaoId(),UserRole.CAREGIVER);
     }
+    @Test void missingOrOtherUsersNoticeUsesCommonErrorResponse() throws Exception {
+        cares.request(caregiver,accounts.patientInviteCode(personal));
+        var notice=queries.list(personal.getId()).items().get(0);
+        for (var id : java.util.List.of(notice.id(),java.util.UUID.randomUUID())) {
+            mvc.perform(patch("/api/notifications/"+id+"/read")
+                    .header("Authorization","Bearer "+jwt.create(caregiver)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("SYSTEM_NOTIFICATION_001"))
+                    .andExpect(jsonPath("$.message").value("알림을 찾을 수 없습니다."))
+                    .andExpect(jsonPath("$.timestamp").exists());
+        }
+        assertThat(queries.list(personal.getId()).unreadCount()).isEqualTo(1);
+        mvc.perform(patch("/api/notifications/"+notice.id()+"/read")
+                .header("Authorization","Bearer "+jwt.create(personal)))
+                .andExpect(status().isNoContent());
+    }
     @Test void relationEventsNotifyOtherParticipantAndReadsAreScoped() {
         var relation=cares.request(caregiver,accounts.patientInviteCode(personal));
         var page=queries.list(personal.getId());
         assertThat(page.unreadCount()).isEqualTo(1);
         assertThat(page.items().get(0).type()).isEqualTo("RELATION_REQUESTED");
         assertThatThrownBy(()->commands.read(caregiver.getId(),page.items().get(0).id()))
-            .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+            .isInstanceOf(com.gyote.silvercare.global.exception.BusinessException.class);
         commands.read(personal.getId(),page.items().get(0).id());
         commands.read(personal.getId(),page.items().get(0).id());
         assertThat(queries.list(personal.getId()).unreadCount()).isZero();

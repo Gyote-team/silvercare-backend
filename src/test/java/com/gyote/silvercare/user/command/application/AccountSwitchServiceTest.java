@@ -118,7 +118,7 @@ class AccountSwitchServiceTest {
     void ownCaregiverAccountCannotConnectToOwnPersonalAccount() {
         UserAccountService accounts = new UserAccountService(users, patients);
         AccountSwitchService switches = new AccountSwitchService(users, accounts);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         User personal = accounts.chooseRole(accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(), UserRole.PATIENT);
         User caregiver = switches.switchTo("kakao-soonja", UserRole.CAREGIVER);
 
@@ -132,7 +132,7 @@ class AccountSwitchServiceTest {
     void withdrawalRemovesEveryLinkedAccountAndTheirRelations() {
         UserAccountService accounts = new UserAccountService(users, patients);
         AccountSwitchService switches = new AccountSwitchService(users, accounts);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         UserWithdrawalService withdrawals = new UserWithdrawalService(users, patients, relations);
         User personal = accounts.chooseRole(accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(), UserRole.PATIENT);
         User myCaregiver = switches.switchTo("kakao-soonja", UserRole.CAREGIVER);

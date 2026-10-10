@@ -41,9 +41,9 @@ class HealthRecordServiceTest {
     void setup() {
         accounts=new UserAccountService(users,patients);
         switches=new AccountSwitchService(users,accounts);
-        cares=new CareRelationCommandService(relations,patients,users);
+        cares=new CareRelationCommandService(relations, patients, users, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         var access=new HealthRecordAccessPolicy(patients,relations);
-        commands=new HealthRecordCommandService(records,access,jdbc);
+        commands=new HealthRecordCommandService(records,access,jdbc,org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         queries=new HealthRecordQueryService(records,access,users);
         personal=accounts.chooseRole(accounts.loginOrRegister("personal","개인").getKakaoId(),UserRole.PATIENT);
         caregiver=accounts.chooseRole(accounts.loginOrRegister("caregiver","보호자").getKakaoId(),UserRole.CAREGIVER);
@@ -156,7 +156,7 @@ class HealthRecordServiceTest {
     }
     @Test void visitMustBelongToTargetAndBeActive() {
         JdbcTemplate visitLookup=org.mockito.Mockito.mock(JdbcTemplate.class);
-        var commandWithVisits=new HealthRecordCommandService(records,new HealthRecordAccessPolicy(patients,relations),visitLookup);
+        var commandWithVisits=new HealthRecordCommandService(records,new HealthRecordAccessPolicy(patients,relations),visitLookup,org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         UUID valid=UUID.randomUUID(), wrong=UUID.randomUUID(), canceled=UUID.randomUUID();
         String sql="select count(*) from visits where id=? and patient_id=? and deleted_at is null and status not in ('CANCELLED','CANCELED')";
         org.mockito.Mockito.when(visitLookup.queryForObject(sql,Integer.class,valid,patientId)).thenReturn(1);

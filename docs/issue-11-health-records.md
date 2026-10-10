@@ -64,36 +64,12 @@ nextCursor는 대상 개인·시각·UUID를 포함하는 불투명 문자열이
 HealthRecordApiIntegrationTest(실제 인증 필터·CRUD·세션/JWT 계정 전환).
 프론트 화면은 /records에서 실제 API를 사용한다.
 
-2026-10-08 검증: 백엔드 전체 85개 테스트 통과, 프론트 TypeScript 검사 및 production build 통과.
-테스트 DB는 H2이며 PostgreSQL의 실제 Flyway 적용은 Docker가 실행되지 않아 확인하지 못했다.
-
-2026-10-10: 최신 develop(백엔드 b637da3, 프론트 5d576bd)을 각 account-switch 브랜치에 병합했다.
-문서 업로드·분석과 프론트 FormData 지원을 보존했다.
-수정 요청의 patientId가 원래 대상과 다르면 400을 반환하고 기록을 변경하지 않는다.
-프론트 조회 실패는 빈 기록 상태와 구분하고 다시 불러오기를 제공한다.
-대상 개인 전환 시 작성 중인 내용이 있으면 삭제 여부를 확인한다.
-백엔드 전체 199개 테스트 통과.
-
-## PR 전 DB 업그레이드 확인 (2026-10-10)
-
-- Docker Compose 설정은 변경하지 않는다. PostgreSQL 이미지는 `pgvector/pgvector:pg16`이다.
-- V1/V2/V3를 포함한 develop의 기존 SQL은 수정하지 않는다.
-- 계정 전환은 미병합 마이그레이션의 번호를 `V202610101700`으로 조정했다. 최신 develop 및 이번 PR의 다른 마이그레이션 뒤에 적용하며 Flyway out-of-order 설정은 사용하지 않는다. SQL 내용은 그대로이며 기존 사용자 행을 보존하고 account_group_id를 채운다.
-- 기존 로컬 `silvercare` DB는 오래된 V1 체크섬(-1425741100)을 갖고 있어 현재 V1(1815981943)과 다르다. 이 환경은 자동 repair나 볼륨 삭제로 해결하지 않는다. 데이터가 필요한 경우 별도 백업 및 변환이 필요하다.
-- 현재 시연 서버는 `DB_URL=jdbc:postgresql://127.0.0.1:5432/silvercare_issue11`을 사용한다. 이 DB에는 V3와 추가 마이그레이션이 모두 적용돼 있다. 이 설정은 로컬 실행 환경이며 저장소의 기본 DB 주소를 바꾸지 않는다.
-- 시스템 알림은 `V202610101630__system_notifications.sql`의 별도 테이블을 사용한다. 기존 복약 발송용 notifications 테이블과 충돌하지 않는다.
-- 개인이 보호자 작성 기록을 수정해도 원래 authorUserId와 authorName을 유지하는 HTTP 회귀 테스트를 추가했다.
-- 백엔드 전체 203개 테스트와 프론트 TypeScript 검사를 통과했다.
-- 임시 PostgreSQL DB에 develop의 6개 마이그레이션과 기존 계정 한 개를 적용한 뒤 현재 브랜치로 업그레이드했다. 추가 3개 마이그레이션이 성공했고 기존 계정 및 그룹 ID가 유지됐으며 JPA 스키마 검증과 서버 기동을 통과했다.
-- 프론트 production build도 통과했다.
-
 ## 시스템 알림 계약
-
-PR 리뷰 후 번호 순서 재검증: out-of-order 설정을 제거하고 계정 전환 파일을 V202610101700으로 옮겼다. 새 PostgreSQL DB 전체 적용 및 기존 develop DB 업그레이드 모두 순서대로 적용되고 서버 기동을 통과했다. 시연용 silvercare_issue11 DB는 동일한 SQL의 적용 이력 version만 변경해 계정·기록을 보존했다. 이미 옛 번호를 적용한 다른 개발 DB도 별도 확인이 필요하며, 팀 공통 마이그레이션에는 이력 변경 SQL을 추가하지 않는다.
 
 `GET /api/notifications`는 현재 역할 계정의 최신 50개 알림과 전체 unreadCount를 반환한다.
 `PATCH /api/notifications/{id}/read`와 `PATCH /api/notifications/read-all`은 204를 반환한다.
 타인의 알림 읽음 요청은 404이며, 계정 전환 시 다른 역할 계정의 알림을 노출하지 않는다.
+없거나 타인 소유인 알림은 공통 ErrorResponse의 SYSTEM_NOTIFICATION_001 코드로 반환한다.
 연결 요청·수락·거절·취소·해제와 보호자 기록 작성이 대상자에게 알림을 생성한다.
 알림은 원래 활동과 같은 트랜잭션에서 저장되며 건강기록 본문을 복제하지 않는다.
 기존 활동은 소급 생성하지 않는다.
