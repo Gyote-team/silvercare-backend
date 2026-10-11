@@ -62,7 +62,7 @@ public class HealthRecordCommandService {
         return saved;
     }
 
-    /** 본인 프로필의 개인 또는 현재 접근 가능한 작성자가 기록을 수정한다. */
+    /** 본인 프로필의 개인 또는 ACTIVE 보호자가 기록을 수정한다. */
     public HealthRecord update(User actor, UUID id, String body, UUID visitId) {
         return update(actor, id, null, body, visitId);
     }
@@ -79,7 +79,7 @@ public class HealthRecordCommandService {
         return record;
     }
 
-    /** 본인 프로필의 개인 또는 허용된 작성자가 기록을 소프트 삭제한다. */
+    /** 본인 프로필의 개인 또는 ACTIVE 보호자가 기록을 소프트 삭제한다. */
     public void delete(User actor, UUID id) {
         requireWritable(actor, id).delete();
     }
@@ -89,11 +89,7 @@ public class HealthRecordCommandService {
                 records.findByIdAndDeletedAtIsNull(id)
                         .orElseThrow(() -> new BusinessException(HealthRecordErrorCode.NOT_FOUND));
         access.requirePatient(actor, record.getPatientId());
-        // 개인 계정은 위 접근 검사에서 본인 프로필임이 확인되므로 작성자와 무관하게 관리한다.
-        if (actor.getRole() != UserRole.PATIENT
-                && !actor.getId().equals(record.getAuthorUserId())) {
-            throw new BusinessException(HealthRecordErrorCode.AUTHOR_REQUIRED);
-        }
+        // 본인 또는 ACTIVE 보호자임을 확인한 뒤 작성자와 무관하게 관리한다.
         return record;
     }
 

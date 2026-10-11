@@ -110,7 +110,7 @@ class HealthRecordApiIntegrationTest {
                 .andExpect(jsonPath("$.authorName").value("원래 보호자"))
                 .andExpect(jsonPath("$.proxyWritten").value(true));
     }
-    @Test void linkedCaregiverCanReadButCannotChangeOtherAuthorsRecord() throws Exception {
+    @Test void activeCaregiverMayManagePersonalRecordButRevokedCannot() throws Exception {
         String id=record("본인 기록");
         User caregiver=accounts.chooseRole(accounts.loginOrRegister("other-"+java.util.UUID.randomUUID(),"보호자").getKakaoId(),UserRole.CAREGIVER);
         var relation=cares.request(caregiver,accounts.patientInviteCode(personal));
@@ -120,10 +120,20 @@ class HealthRecordApiIntegrationTest {
         cares.accept(personal,relation.getId());
         mvc.perform(get("/api/health-records/"+id).header("Authorization","Bearer "+caregiverToken))
                 .andExpect(status().isOk());
-        mvc.perform(delete("/api/health-records/"+id).header("Authorization","Bearer "+caregiverToken))
-                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("HEALTH_RECORD_003"));
+        mvc.perform(put("/api/health-records/"+id).header("Authorization","Bearer "+caregiverToken)
+                .contentType("application/json").content("{\"body\":\"보호자가 수정\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.authorUserId").value(personal.getId().toString()))
+                .andExpect(jsonPath("$.authorName").value("본인")).andExpect(jsonPath("$.proxyWritten").value(false));
+        String deletedId=record("삭제할 본인 기록");
+        mvc.perform(delete("/api/health-records/"+deletedId).header("Authorization","Bearer "+caregiverToken))
+                .andExpect(status().isNoContent());
         cares.revoke(personal,relation.getId());
         mvc.perform(get("/api/health-records/"+id).header("Authorization","Bearer "+caregiverToken))
+                .andExpect(status().isForbidden());
+        mvc.perform(put("/api/health-records/"+id).header("Authorization","Bearer "+caregiverToken)
+                .contentType("application/json").content("{\"body\":\"차단\"}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete("/api/health-records/"+id).header("Authorization","Bearer "+caregiverToken))
                 .andExpect(status().isForbidden());
     }
 }

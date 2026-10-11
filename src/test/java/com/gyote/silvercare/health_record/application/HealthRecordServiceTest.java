@@ -91,6 +91,18 @@ class HealthRecordServiceTest {
         assertThat(queries.list(personal,null,null,20).items()).isEmpty();
         assertCode(() -> queries.detail(personal,record.getId()),HealthRecordErrorCode.NOT_FOUND);
     }
+    @Test void activeCaregiverMayManageAnotherCaregiversRecord() {
+        connect();
+        User second=accounts.chooseRole(accounts.loginOrRegister("second-caregiver","다른 보호자").getKakaoId(),UserRole.CAREGIVER);
+        var relation=cares.request(second,accounts.patientInviteCode(personal));
+        cares.accept(personal,relation.getId());
+        var record=commands.create(second,patientId,"다른 보호자 기록",null);
+        commands.update(caregiver,record.getId(),"공동 관리 수정",null);
+        assertThat(queries.detail(personal,record.getId()).authorUserId()).isEqualTo(second.getId());
+        assertThat(queries.detail(personal,record.getId()).body()).isEqualTo("공동 관리 수정");
+        commands.delete(caregiver,record.getId());
+        assertCode(() -> queries.detail(personal,record.getId()),HealthRecordErrorCode.NOT_FOUND);
+    }
     @Test void revokedAuthorCannotChangePreviouslyWrittenRecords() {
         UUID relation=connect();
         var record=commands.create(caregiver,patientId,"대리 작성",null);
