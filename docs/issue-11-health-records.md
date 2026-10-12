@@ -22,6 +22,9 @@
 
 작성: `{ "patientId": "UUID (보호자 필수)", "body": "1~2000자", "visitId": "UUID 또는 null" }`.
 수정: body와 visitId를 변경하며 대상 개인·작성자는 변경하지 않는다.
+authorUserId·authorName·proxyWritten은 최초 작성 정보를 유지하며 마지막 편집자를 뜻하지 않는다. updatedAt은 수정 시각이다.
+
+추후 보완: 공동 관리 시 누가 내용을 수정했는지 구분할 편집자 정보 및 변경 이력을 추가한다. 현재는 해당 이력이 없어 원래 작성자가 직접 수정한 것으로 해석하면 안 된다. 이번 구현 범위에서는 편집자 필드나 이력 조회를 제공하지 않는다.
 본문은 공백만 입력할 수 없고, 개인 계정의 patientId 생략은 본인 프로필을 뜻한다.
 기록 필드: recordId, patientId, authorUserId, authorName, visitId, body,
 recordedAt, createdAt, updatedAt, proxyWritten.
