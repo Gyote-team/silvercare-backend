@@ -3,6 +3,7 @@ package com.gyote.silvercare.health_record.domain;
 import com.gyote.silvercare.care_relation.domain.CareRelationStatus;
 import com.gyote.silvercare.care_relation.domain.repository.CareRelationRepository;
 import com.gyote.silvercare.global.exception.BusinessException;
+import com.gyote.silvercare.global.exception.GlobalErrorCode;
 import com.gyote.silvercare.health_record.error.HealthRecordErrorCode;
 import com.gyote.silvercare.patient.domain.Patient;
 import com.gyote.silvercare.patient.domain.repository.PatientRepository;
@@ -49,7 +50,7 @@ public class HealthRecordAccessPolicy {
         }
         throw new BusinessException(
                 requested == null
-                        ? HealthRecordErrorCode.INVALID_REQUEST
+                        ? GlobalErrorCode.INVALID_REQUEST
                         : HealthRecordErrorCode.ACCESS_DENIED);
     }
 }

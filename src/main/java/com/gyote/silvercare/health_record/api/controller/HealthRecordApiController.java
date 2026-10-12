@@ -1,12 +1,10 @@
 package com.gyote.silvercare.health_record.api.controller;
 
-import com.gyote.silvercare.global.exception.ErrorResponse;
 import com.gyote.silvercare.health_record.api.dto.request.HealthRecordWriteRequestDto;
 import com.gyote.silvercare.health_record.api.dto.response.HealthRecordPageResponseDto;
 import com.gyote.silvercare.health_record.api.dto.response.HealthRecordResponseDto;
 import com.gyote.silvercare.health_record.api.mapper.HealthRecordResponseMapper;
 import com.gyote.silvercare.health_record.command.application.HealthRecordCommandService;
-import com.gyote.silvercare.health_record.error.HealthRecordErrorCode;
 import com.gyote.silvercare.health_record.query.application.HealthRecordQueryService;
 import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.query.application.UserQueryService;
@@ -14,12 +12,9 @@ import com.gyote.silvercare.user.query.application.UserQueryService;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,7 +24,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.UUID;
 
@@ -104,21 +98,5 @@ public class HealthRecordApiController {
     private User actor(OAuth2User principal) {
         Object kakaoId = principal.getAttribute("id");
         return users.requireByKakaoId(String.valueOf(kakaoId));
-    }
-
-    /** 잘못된 UUID와 페이지 크기를 공통 오류 계약으로 반환한다. */
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> invalidParameter(
-            MethodArgumentTypeMismatchException error) {
-        return ResponseEntity.badRequest()
-                .body(ErrorResponse.of(HealthRecordErrorCode.INVALID_REQUEST));
-    }
-
-    /** 겹친 수정·삭제는 재조회 후 다시 시도하도록 안내한다. */
-    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
-    public ResponseEntity<ErrorResponse> concurrentUpdate(
-            ObjectOptimisticLockingFailureException error) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ErrorResponse.of(HealthRecordErrorCode.CONFLICT));
     }
 }

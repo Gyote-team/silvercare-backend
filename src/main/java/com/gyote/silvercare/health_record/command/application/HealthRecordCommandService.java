@@ -1,6 +1,7 @@
 package com.gyote.silvercare.health_record.command.application;
 
 import com.gyote.silvercare.global.exception.BusinessException;
+import com.gyote.silvercare.global.exception.GlobalErrorCode;
 import com.gyote.silvercare.health_record.domain.HealthRecordAccessPolicy;
 import com.gyote.silvercare.health_record.domain.entity.HealthRecord;
 import com.gyote.silvercare.health_record.domain.repository.HealthRecordRepository;
@@ -71,7 +72,7 @@ public class HealthRecordCommandService {
     public HealthRecord update(User actor, UUID id, UUID patientId, String body, UUID visitId) {
         HealthRecord record = requireWritable(actor, id);
         if (patientId != null && !patientId.equals(record.getPatientId())) {
-            throw new BusinessException(HealthRecordErrorCode.INVALID_REQUEST);
+            throw new BusinessException(GlobalErrorCode.INVALID_REQUEST);
         }
         validateBody(body);
         validateVisit(record.getPatientId(), visitId);
@@ -95,7 +96,7 @@ public class HealthRecordCommandService {
 
     private void validateBody(String body) {
         if (body == null || body.isBlank() || body.length() > 2000)
-            throw new BusinessException(HealthRecordErrorCode.INVALID_REQUEST);
+            throw new BusinessException(GlobalErrorCode.INVALID_REQUEST);
     }
 
     private void validateVisit(UUID patientId, UUID visitId) {
@@ -103,7 +104,7 @@ public class HealthRecordCommandService {
         Integer count =
                 jdbc.queryForObject(
                         "select count(*) from visits where id=? and patient_id=? and deleted_at is"
-                            + " null and status not in ('CANCELLED','CANCELED')",
+                                + " null and status not in ('CANCELLED','CANCELED')",
                         Integer.class,
                         visitId,
                         patientId);

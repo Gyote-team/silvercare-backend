@@ -1,6 +1,7 @@
 package com.gyote.silvercare.health_record.query.application;
 
 import com.gyote.silvercare.global.exception.BusinessException;
+import com.gyote.silvercare.global.exception.GlobalErrorCode;
 import com.gyote.silvercare.health_record.domain.HealthRecordAccessPolicy;
 import com.gyote.silvercare.health_record.domain.entity.HealthRecord;
 import com.gyote.silvercare.health_record.domain.repository.HealthRecordRepository;
@@ -42,8 +43,7 @@ public class HealthRecordQueryService {
             User actor, UUID patientId, String cursor, Integer requestedSize) {
         UUID target = access.requirePatient(actor, patientId);
         int size = requestedSize == null ? 20 : requestedSize;
-        if (size < 1 || size > 100)
-            throw new BusinessException(HealthRecordErrorCode.INVALID_REQUEST);
+        if (size < 1 || size > 100) throw new BusinessException(GlobalErrorCode.INVALID_REQUEST);
         Instant before = null;
         UUID beforeId = null;
         if (cursor != null) {
@@ -56,7 +56,7 @@ public class HealthRecordQueryService {
                 before = Instant.parse(parts[1]);
                 beforeId = UUID.fromString(parts[2]);
             } catch (RuntimeException error) {
-                throw new BusinessException(HealthRecordErrorCode.INVALID_REQUEST);
+                throw new BusinessException(GlobalErrorCode.INVALID_REQUEST);
             }
         }
         List<HealthRecord> rows =

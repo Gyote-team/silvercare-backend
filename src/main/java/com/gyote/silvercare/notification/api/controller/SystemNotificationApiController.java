@@ -1,8 +1,9 @@
 package com.gyote.silvercare.notification.api.controller;
 
+import com.gyote.silvercare.notification.api.dto.response.SystemNotificationPageResponseDto;
+import com.gyote.silvercare.notification.api.mapper.SystemNotificationResponseMapper;
 import com.gyote.silvercare.notification.command.application.SystemNotificationCommandService;
 import com.gyote.silvercare.notification.query.application.SystemNotificationQueryService;
-import com.gyote.silvercare.notification.query.model.SystemNotificationPageView;
 import com.gyote.silvercare.user.query.application.UserQueryService;
 
 import org.springframework.http.HttpStatus;
@@ -24,20 +25,23 @@ public class SystemNotificationApiController {
     private final SystemNotificationQueryService queries;
     private final SystemNotificationCommandService commands;
     private final UserQueryService users;
+    private final SystemNotificationResponseMapper mapper;
 
     public SystemNotificationApiController(
             SystemNotificationQueryService queries,
             SystemNotificationCommandService commands,
-            UserQueryService users) {
+            UserQueryService users,
+            SystemNotificationResponseMapper mapper) {
         this.queries = queries;
         this.commands = commands;
         this.users = users;
+        this.mapper = mapper;
     }
 
     /** 현재 역할 계정의 알림을 조회한다. */
     @GetMapping
-    public SystemNotificationPageView list(@AuthenticationPrincipal OAuth2User principal) {
-        return queries.list(actorId(principal));
+    public SystemNotificationPageResponseDto list(@AuthenticationPrincipal OAuth2User principal) {
+        return mapper.toResponse(queries.list(actorId(principal)));
     }
 
     /** 현재 계정의 알림을 읽음 처리한다. */
