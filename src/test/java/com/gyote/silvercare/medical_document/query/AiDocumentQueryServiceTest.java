@@ -85,7 +85,7 @@ class AiDocumentQueryServiceTest {
         );
         patientProfile = patients.findByUserId(patient.getId()).orElseThrow();
 
-        CareRelationCommandService careCommands = new CareRelationCommandService(relations, patients, users);
+        CareRelationCommandService careCommands = new CareRelationCommandService(relations, patients, users, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         CareRelation requested = careCommands.request(caregiver, accounts.patientInviteCode(patient));
         careCommands.accept(patient, requested.getId());
 

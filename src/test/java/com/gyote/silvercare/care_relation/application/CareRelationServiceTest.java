@@ -42,7 +42,7 @@ class CareRelationServiceTest {
     @Test
     void caregiverRequestsWithPatientInviteCode() {
         UserAccountService accounts = new UserAccountService(users, patients);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         User patient = accounts.chooseRole(
                 accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(),
                 UserRole.PATIENT
@@ -64,7 +64,7 @@ class CareRelationServiceTest {
     @Test
     void patientAcceptsThenCaregiverCannotAccept() {
         UserAccountService accounts = new UserAccountService(users, patients);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         User patient = accounts.chooseRole(
                 accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(),
                 UserRole.PATIENT
@@ -85,7 +85,7 @@ class CareRelationServiceTest {
     @Test
     void unknownOrSelfCodeIsRejected() {
         UserAccountService accounts = new UserAccountService(users, patients);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         User caregiver = accounts.chooseRole(
                 accounts.loginOrRegister("kakao-minji", "김민지").getKakaoId(),
                 UserRole.CAREGIVER
@@ -98,7 +98,7 @@ class CareRelationServiceTest {
     @Test
     void withdrawnPatientInviteCodeIsRejected() {
         UserAccountService accounts = new UserAccountService(users, patients);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         UserWithdrawalService withdrawals = new UserWithdrawalService(users, patients, relations);
         User patient = accounts.chooseRole(
                 accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(),
@@ -122,7 +122,7 @@ class CareRelationServiceTest {
     @Test
     void caregiverWithdrawnAfterAuthenticationCannotRequest() {
         UserAccountService accounts = new UserAccountService(users, patients);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         User patient = accounts.chooseRole(
                 accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(),
                 UserRole.PATIENT
@@ -143,7 +143,7 @@ class CareRelationServiceTest {
     @Test
     void acceptIsRejectedWhenCaregiverWithdrewBeforeLockWasAcquired() {
         UserAccountService accounts = new UserAccountService(users, patients);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         User patient = accounts.chooseRole(
                 accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(),
                 UserRole.PATIENT
@@ -165,7 +165,7 @@ class CareRelationServiceTest {
     @Test
     void eitherSideCanRevokeActiveLink() {
         UserAccountService accounts = new UserAccountService(users, patients);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         User patient = accounts.chooseRole(
                 accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(),
                 UserRole.PATIENT
@@ -187,7 +187,7 @@ class CareRelationServiceTest {
     @Test
     void bothParticipantsSeeRelationDetailWithTimestamps() {
         UserAccountService accounts = new UserAccountService(users, patients);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         CareRelationQueryService queries = new CareRelationQueryService(relations, users, new UserQueryService(users), patients);
         User patient = accounts.chooseRole(
                 accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(),
@@ -218,7 +218,7 @@ class CareRelationServiceTest {
     @Test
     void strangerCannotSeeRelationDetailAndUnknownIdIsNotFound() {
         UserAccountService accounts = new UserAccountService(users, patients);
-        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users);
+        CareRelationCommandService cares = new CareRelationCommandService(relations, patients, users, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         CareRelationQueryService queries = new CareRelationQueryService(relations, users, new UserQueryService(users), patients);
         User patient = accounts.chooseRole(
                 accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(),
