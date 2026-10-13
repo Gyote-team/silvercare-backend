@@ -104,7 +104,7 @@ public class HealthRecordCommandService {
         Integer count =
                 jdbc.queryForObject(
                         "select count(*) from visits where id=? and patient_id=? and deleted_at is"
-                                + " null and status not in ('CANCELLED','CANCELED')",
+                                + " null and status <> 'CANCELED'",
                         Integer.class,
                         visitId,
                         patientId);
