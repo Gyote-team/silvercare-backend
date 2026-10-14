@@ -1,0 +1,86 @@
+package com.gyote.silvercare.ai_result.domain;
+
+import com.gyote.silvercare.global.status.AiJobStatus;
+import com.gyote.silvercare.global.status.ResultStatus;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import java.time.Instant;
+import java.util.UUID;
+
+@Entity
+@Table(name = "ai_result_documents")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class AiResultDocument {
+
+    @Id
+    private UUID id;
+    @Column(name = "request_id", nullable = false, unique = true)
+    private UUID requestId;
+    @Column(name = "patient_id", nullable = false)
+    private UUID patientId;
+    @Column(name = "requested_by_user_id", nullable = false)
+    private UUID requestedByUserId;
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String question;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "question_type", nullable = false)
+    private QuestionType questionType;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "job_status", nullable = false)
+    private AiJobStatus jobStatus;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "result_status")
+    private ResultStatus resultStatus;
+    private String title;
+    @Column(columnDefinition = "TEXT")
+    private String content;
+    @Column(name = "citation_json", columnDefinition = "TEXT")
+    private String citationJson;
+    @Column(name = "error_message")
+    private String errorMessage;
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
+    @Column(name = "completed_at")
+    private Instant completedAt;
+
+    public static AiResultDocument queued(UUID patientId, UUID requesterId, String question, QuestionType type) {
+        AiResultDocument result = new AiResultDocument();
+        result.id = UUID.randomUUID();
+        result.requestId = UUID.randomUUID();
+        result.patientId = patientId;
+        result.requestedByUserId = requesterId;
+        result.question = question;
+        result.questionType = type;
+        result.jobStatus = AiJobStatus.QUEUED;
+        result.createdAt = Instant.now();
+        return result;
+    }
+
+    public void markRunning() {
+        jobStatus = AiJobStatus.RUNNING;
+    }
+
+    public void complete(ResultStatus status, String title, String content, String citationJson) {
+        jobStatus = AiJobStatus.SUCCEEDED;
+        resultStatus = status;
+        this.title = title;
+        this.content = content;
+        this.citationJson = citationJson;
+        completedAt = Instant.now();
+    }
+
+    public void fail(String message) {
+        jobStatus = AiJobStatus.FAILED;
+        errorMessage = message;
+        completedAt = Instant.now();
+    }
+}

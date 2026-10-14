@@ -1,0 +1,42 @@
+package com.gyote.silvercare.ai_result.chat;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import java.time.Instant;
+import java.util.UUID;
+
+@Entity
+@Table(name = "chat_messages")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class ChatMessage {
+    @Id
+    private UUID id;
+    @Column(name = "session_id", nullable = false)
+    private UUID sessionId;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ChatRole role;
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String content;
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
+
+    public static ChatMessage of(UUID sessionId, ChatRole role, String content) {
+        ChatMessage message = new ChatMessage();
+        message.id = UUID.randomUUID();
+        message.sessionId = sessionId;
+        message.role = role;
+        message.content = content;
+        message.createdAt = Instant.now();
+        return message;
+    }
+}
