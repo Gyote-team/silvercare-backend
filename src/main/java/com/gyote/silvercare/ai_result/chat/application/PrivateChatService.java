@@ -53,7 +53,13 @@ public class PrivateChatService {
         AiResultDocumentResponse answer = resultDocuments.create(actor, new CreateAiResultDocumentRequest(
                 session.getPatientId(), request.question(), request.questionType(), request.documentIds()
         ));
-        String text = answer.content() == null ? "답변을 만들지 못했어요." : answer.content();
+        String text = answer.content();
+        if (answer.jobStatus() == com.gyote.silvercare.global.status.AiJobStatus.FAILED) {
+            text = "AI 답변 생성 실패 (AI_GENERATION_FAILED): "
+                    + (answer.errorMessage() == null ? "잠시 후 다시 시도해 주세요." : answer.errorMessage());
+        } else if (text == null) {
+            text = "답변을 만들지 못했어요.";
+        }
         messages.save(ChatMessage.of(sessionId, ChatRole.ASSISTANT, text));
         return messages.findBySessionIdOrderByCreatedAtAsc(sessionId)
                 .stream().map(PrivateChatService::messageResponse).toList();
