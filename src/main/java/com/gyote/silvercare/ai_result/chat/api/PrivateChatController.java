@@ -37,7 +37,7 @@ public class PrivateChatController {
     @GetMapping("/api/ai-chat-sessions")
     public List<ChatSessionResponse> list(
             @AuthenticationPrincipal OAuth2User principal,
-            @RequestParam UUID patientId
+            @RequestParam(required = false) UUID patientId
     ) {
         return chats.list(actor(principal), patientId);
     }
