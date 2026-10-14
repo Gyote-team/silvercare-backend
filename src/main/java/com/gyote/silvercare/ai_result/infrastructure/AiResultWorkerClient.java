@@ -59,6 +59,9 @@ public class AiResultWorkerClient {
             String answer,
             List<Sentence> sentences,
             boolean blocked,
+            boolean failed,
+            @JsonProperty("error_code") String errorCode,
+            boolean retryable,
             @JsonProperty("user_message") String userMessage
     ) {
     }

@@ -60,7 +60,11 @@ public class AiResultDocumentService {
             AiResultWorkerClient.WorkerResponse workerResponse = worker.generate(new AiResultWorkerClient.WorkerRequest(
                     result.getRequestId(), patientId, actor.getId(), request.question(), request.questionType(), evidence
             ));
-            if (workerResponse.blocked()) {
+            if (workerResponse.failed()) {
+                result.fail(workerResponse.userMessage() == null || workerResponse.userMessage().isBlank()
+                        ? "AI 결과 문서를 생성하지 못했습니다."
+                        : workerResponse.userMessage());
+            } else if (workerResponse.blocked()) {
                 result.complete(ResultStatus.INSUFFICIENT, "답변 제한", workerResponse.userMessage(), "[]");
             } else {
                 result.complete(
