@@ -42,7 +42,9 @@ visitedOn과 visitStatus는 필수다. hospitalName·department·memo는 선택�
 
 ## DB 적용
 
-V202610131400__visit_crud_status_and_version.sql을 추가한다. 기존 SQL은 변경하지 않는다. PLANNED→SCHEDULED, COMPLETED→DONE, CANCELLED→CANCELED로 변환하고 OPEN은 미래 날짜면 SCHEDULED, 그 외 DONE으로 바꾼다. 기존 행·하위 FK를 보존하며 버전과 방문일 기준 목록 인덱스를 추가한다.
+V202610141200__visit_crud_status_and_version.sql을 추가한다. 기존 SQL은 변경하지 않는다. PLANNED→SCHEDULED, COMPLETED→DONE, CANCELLED→CANCELED로 변환하고 OPEN은 미래 날짜면 SCHEDULED, 그 외 DONE으로 바꾼다. 기존 행·하위 FK를 보존하며 버전과 방문일 기준 목록 인덱스를 추가한다.
+
+미병합 방문 마이그레이션의 번호는 develop의 V202610132247 뒤로 조정했다. out-of-order 설정은 사용하지 않는다. 옛 번호 V202610131400을 적용했던 로컬 검증 DB는 이력이 다르므로 그대로 재사용하지 말고 별도로 확인한다. 팀 공통 DB의 이력을 자동 수정하는 SQL은 포함하지 않는다.
 
 상태 변환 후 건강기록의 방문 유효성 검사도 CANCELED를 기준으로 한다. 취소 방문에 새 건강기록을 연결하는 요청은 기존 건강기록 규칙에 따라 거절한다. 기존 연결 기록 조회는 유지된다.
 
