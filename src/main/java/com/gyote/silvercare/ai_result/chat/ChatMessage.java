@@ -27,6 +27,8 @@ public class ChatMessage {
     private ChatRole role;
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
+    @Column(name = "result_document_id")
+    private UUID resultDocumentId;
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -37,6 +39,12 @@ public class ChatMessage {
         message.role = role;
         message.content = content;
         message.createdAt = Instant.now();
+        return message;
+    }
+
+    public static ChatMessage answer(UUID sessionId, String content, UUID resultDocumentId) {
+        ChatMessage message = of(sessionId, ChatRole.ASSISTANT, content);
+        message.resultDocumentId = resultDocumentId;
         return message;
     }
 }

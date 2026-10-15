@@ -49,6 +49,9 @@ public class PrivateChatService {
     @Transactional
     public List<ChatMessageResponse> ask(User actor, UUID sessionId, AskChatRequest request) {
         ChatSession session = ownSession(actor, sessionId);
+        if ("새 채팅".equals(session.getTitle())) {
+            session.rename(questionTitle(request.question()));
+        }
         messages.save(ChatMessage.of(sessionId, ChatRole.USER, request.question()));
         AiResultDocumentResponse answer = resultDocuments.create(actor, new CreateAiResultDocumentRequest(
                 session.getPatientId(), request.question(), request.questionType(), request.documentIds()
@@ -57,10 +60,10 @@ public class PrivateChatService {
         if (answer.jobStatus() == com.gyote.silvercare.global.status.AiJobStatus.FAILED) {
             text = "AI 답변 생성 실패 (AI_GENERATION_FAILED): "
                     + (answer.errorMessage() == null ? "잠시 후 다시 시도해 주세요." : answer.errorMessage());
-        } else if (text == null) {
-            text = "답변을 만들지 못했어요.";
+        } else if (text == null || text.isBlank()) {
+            text = "선택한 문서에서 답변할 수 있는 내용을 찾지 못했어요. 분석이 완료된 다른 문서를 선택해 주세요.";
         }
-        messages.save(ChatMessage.of(sessionId, ChatRole.ASSISTANT, text));
+        messages.save(ChatMessage.answer(sessionId, text, answer.resultDocumentId()));
         return messages.findBySessionIdOrderByCreatedAtAsc(sessionId)
                 .stream().map(PrivateChatService::messageResponse).toList();
     }
@@ -82,6 +85,14 @@ public class PrivateChatService {
     }
 
     private static ChatMessageResponse messageResponse(ChatMessage message) {
-        return new ChatMessageResponse(message.getId(), message.getRole(), message.getContent(), message.getCreatedAt());
+        return new ChatMessageResponse(message.getId(), message.getRole(), message.getContent(), message.getCreatedAt(), message.getResultDocumentId());
+    }
+
+    private static String questionTitle(String question) {
+        String normalized = question == null ? "" : question.trim().replaceAll("\\s+", " ");
+        if (normalized.isBlank()) {
+            return "새 채팅";
+        }
+        return normalized.length() > 38 ? normalized.substring(0, 37).stripTrailing() + "…" : normalized;
     }
 }

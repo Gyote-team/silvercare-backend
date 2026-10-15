@@ -35,4 +35,8 @@ public class ChatSession {
         session.createdAt = Instant.now();
         return session;
     }
+
+    public void rename(String title) {
+        this.title = title;
+    }
 }
