@@ -33,10 +33,11 @@ public class AiChatQueryService {
                 .stream().map(AiChatSessionView::from).toList();
     }
 
-    /** 채팅방 소유권을 확인하고 전체 메시지를 시간순으로 조회한다. */
+    /** 채팅방 소유권과 현재 환자 열람 권한을 확인하고 전체 메시지를 시간순으로 조회한다. */
     @Transactional(readOnly = true)
     public List<AiChatMessageView> findMessages(User actor, UUID sessionId) {
-        requireOwnedSession(actor, sessionId);
+        ChatSession session = requireOwnedSession(actor, sessionId);
+        permissions.requireDocumentAccess(actor, session.getPatientId());
         return messages.findBySessionIdOrderByCreatedAtAsc(sessionId)
                 .stream().map(AiChatMessageView::from).toList();
     }
