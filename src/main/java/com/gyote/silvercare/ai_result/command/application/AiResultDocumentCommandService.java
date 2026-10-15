@@ -10,10 +10,12 @@ import com.gyote.silvercare.ai_result.query.model.AiResultDocumentView;
 import com.gyote.silvercare.global.status.ResultStatus;
 import com.gyote.silvercare.medical_document.query.application.CareRelationPermissionService;
 import com.gyote.silvercare.user.domain.User;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
 
@@ -23,7 +25,6 @@ import java.util.UUID;
 
 /** 문서 근거를 수집해 AI Backend에 답변 생성을 요청하고 결과를 저장한다. */
 @Service
-@RequiredArgsConstructor
 public class AiResultDocumentCommandService {
 
     private final AiResultDocumentRepository resultDocuments;
@@ -31,9 +32,26 @@ public class AiResultDocumentCommandService {
     private final CareRelationPermissionService permissions;
     private final ObjectProvider<AiResultGenerationClient> generationClients;
     private final ObjectMapper objectMapper;
+    private final TransactionTemplate transactions;
+
+    public AiResultDocumentCommandService(
+            AiResultDocumentRepository resultDocuments,
+            AiEvidenceRetriever evidenceRetriever,
+            CareRelationPermissionService permissions,
+            ObjectProvider<AiResultGenerationClient> generationClients,
+            ObjectMapper objectMapper,
+            PlatformTransactionManager transactionManager
+    ) {
+        this.resultDocuments = resultDocuments;
+        this.evidenceRetriever = evidenceRetriever;
+        this.permissions = permissions;
+        this.generationClients = generationClients;
+        this.objectMapper = objectMapper;
+        this.transactions = new TransactionTemplate(transactionManager);
+    }
 
     /** 접근 가능한 문서 근거를 모아 AI 답변을 생성하고 결과를 저장한다. */
-    @Transactional
+    @Transactional(propagation = Propagation.NEVER)
     public AiResultDocumentView create(
             User actor,
             UUID requestedPatientId,
@@ -42,40 +60,49 @@ public class AiResultDocumentCommandService {
             List<UUID> documentIds
     ) {
         UUID patientId = permissions.resolveTargetPatient(actor, requestedPatientId);
-        AiResultDocument result = resultDocuments.save(
-                AiResultDocument.queued(patientId, actor.getId(), question, questionType)
-        );
-        List<AiResultGenerationClient.Evidence> evidence = evidenceRetriever.retrieve(patientId, documentIds);
+        AiResultDocument result = transactions.execute(status -> resultDocuments.save(
+                AiResultDocument.queued(patientId, actor.getId(), question, questionType)));
+        UUID resultId = result.getId();
+        List<AiResultGenerationClient.Evidence> evidence;
+        try {
+            evidence = evidenceRetriever.retrieve(patientId, documentIds);
+        } catch (Exception exception) {
+            return fail(resultId, "문서 근거를 조회하지 못했어요.");
+        }
         if (evidence.isEmpty()) {
-            result.complete(ResultStatus.INSUFFICIENT, "근거 부족", "선택한 문서에서 분석 완료된 근거를 찾지 못했어요.", "[]");
-            return AiResultDocumentView.from(result);
+            return complete(resultId, ResultStatus.INSUFFICIENT, "근거 부족",
+                    "선택한 문서에서 분석 완료된 근거를 찾지 못했어요.", "[]");
         }
         AiResultGenerationClient client = generationClients.getIfAvailable();
         if (client == null) {
-            result.fail("AI 서버 설정이 없습니다.");
-            return AiResultDocumentView.from(result);
+            return fail(resultId, "AI 서버 설정이 없습니다.");
         }
-        result.markRunning();
+        transactions.executeWithoutResult(status -> resultDocuments.findById(resultId)
+                .orElseThrow().markRunning());
+        AiResultGenerationClient.GenerationResponse generated;
         try {
-            AiResultGenerationClient.GenerationResponse generated = client.generate(
+            generated = client.generate(
                     new AiResultGenerationClient.GenerationRequest(
                             result.getRequestId(), patientId, actor.getId(), question, questionType, evidence
                     )
             );
-            applyGenerationResult(result, generated, evidence);
         } catch (ResourceAccessException exception) {
-            result.fail("AI 서버에 연결하지 못했어요. 서버 상태를 확인해 주세요.");
+            return fail(resultId, "AI 서버에 연결하지 못했어요. 서버 상태를 확인해 주세요.");
         } catch (RestClientResponseException exception) {
-            result.fail("AI 서버가 요청을 처리하지 못했어요 (HTTP " + exception.getStatusCode().value() + ").");
+            return fail(resultId, "AI 서버가 요청을 처리하지 못했어요 (HTTP " + exception.getStatusCode().value() + ").");
         } catch (Exception exception) {
-            result.fail("AI 응답 처리 중 오류가 발생했어요 (" + exception.getClass().getSimpleName() + ").");
+            return fail(resultId, "AI 응답 처리 중 오류가 발생했어요 (" + exception.getClass().getSimpleName() + ").");
         }
-        return AiResultDocumentView.from(result);
+        try {
+            return applyGenerationResult(resultId, generated, evidence);
+        } catch (Exception exception) {
+            return fail(resultId, "AI 응답 처리 중 오류가 발생했어요 (" + exception.getClass().getSimpleName() + ").");
+        }
     }
 
     /** AI Backend 응답 상태에 따라 결과 문서를 성공, 제한, 실패 상태로 갱신한다. */
-    private void applyGenerationResult(
-            AiResultDocument result,
+    private AiResultDocumentView applyGenerationResult(
+            UUID resultId,
             AiResultGenerationClient.GenerationResponse generated,
             List<AiResultGenerationClient.Evidence> evidence
     ) {
@@ -83,19 +110,35 @@ public class AiResultDocumentCommandService {
             String reason = generated.userMessage() == null || generated.userMessage().isBlank()
                     ? "AI 모델이 답변 생성에 실패했어요."
                     : generated.userMessage();
-            result.fail(reason + (generated.errorCode() == null ? "" : " (" + generated.errorCode() + ")"));
-            return;
+            return fail(resultId, reason + (generated.errorCode() == null ? "" : " (" + generated.errorCode() + ")"));
         }
         if (generated.blocked()) {
-            result.complete(ResultStatus.INSUFFICIENT, "답변 제한", generated.userMessage(), "[]");
-            return;
+            return complete(resultId, ResultStatus.INSUFFICIENT, "답변 제한", generated.userMessage(), "[]");
         }
-        result.complete(
+        return complete(resultId,
                 ResultStatus.valueOf(generated.resultStatus()),
                 generated.title(),
                 generated.answer(),
                 citations(generated, evidence)
         );
+    }
+
+    private AiResultDocumentView complete(
+            UUID resultId, ResultStatus status, String title, String content, String citationJson
+    ) {
+        return transactions.execute(transaction -> {
+            AiResultDocument result = resultDocuments.findById(resultId).orElseThrow();
+            result.complete(status, title, content, citationJson);
+            return AiResultDocumentView.from(result);
+        });
+    }
+
+    private AiResultDocumentView fail(UUID resultId, String message) {
+        return transactions.execute(transaction -> {
+            AiResultDocument result = resultDocuments.findById(resultId).orElseThrow();
+            result.fail(message);
+            return AiResultDocumentView.from(result);
+        });
     }
 
     /** AI 답변 문장과 원문 근거를 JSON 형태로 직렬화한다. */

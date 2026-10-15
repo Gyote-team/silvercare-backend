@@ -15,22 +15,38 @@ import com.gyote.silvercare.global.exception.BusinessException;
 import com.gyote.silvercare.global.status.AiJobStatus;
 import com.gyote.silvercare.medical_document.query.application.CareRelationPermissionService;
 import com.gyote.silvercare.user.domain.User;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.UUID;
 
 /** AI 채팅방 생성과 문서 근거 기반 질문 처리를 담당한다. */
 @Service
-@RequiredArgsConstructor
 public class AiChatCommandService {
 
     private final ChatSessionRepository sessions;
     private final ChatMessageRepository messages;
     private final CareRelationPermissionService permissions;
     private final AiResultDocumentCommandService resultDocuments;
+    private final TransactionTemplate transactions;
+
+    public AiChatCommandService(
+            ChatSessionRepository sessions,
+            ChatMessageRepository messages,
+            CareRelationPermissionService permissions,
+            AiResultDocumentCommandService resultDocuments,
+            PlatformTransactionManager transactionManager
+    ) {
+        this.sessions = sessions;
+        this.messages = messages;
+        this.permissions = permissions;
+        this.resultDocuments = resultDocuments;
+        this.transactions = new TransactionTemplate(transactionManager);
+    }
 
     /** 접근 가능한 질문 대상을 기준으로 새 채팅방을 생성한다. */
     @Transactional
@@ -41,7 +57,7 @@ public class AiChatCommandService {
     }
 
     /** 사용자 질문과 AI 답변을 저장하고 전체 대화 내역을 반환한다. */
-    @Transactional
+    @Transactional(propagation = Propagation.NEVER)
     public List<AiChatMessageView> ask(
             User actor,
             UUID sessionId,
@@ -49,17 +65,22 @@ public class AiChatCommandService {
             QuestionType questionType,
             List<UUID> documentIds
     ) {
-        ChatSession session = requireOwnedSession(actor, sessionId);
-        if ("새 채팅".equals(session.getTitle())) {
-            session.rename(questionTitle(question));
-        }
-        messages.save(ChatMessage.of(sessionId, ChatRole.USER, question));
+        UUID patientId = transactions.execute(status -> {
+            ChatSession session = requireOwnedSession(actor, sessionId);
+            if ("새 채팅".equals(session.getTitle())) {
+                session.rename(questionTitle(question));
+            }
+            messages.save(ChatMessage.of(sessionId, ChatRole.USER, question));
+            return session.getPatientId();
+        });
         AiResultDocumentView answer = resultDocuments.create(
-                actor, session.getPatientId(), question, questionType, documentIds
+                actor, patientId, question, questionType, documentIds
         );
-        messages.save(ChatMessage.answer(sessionId, answerText(answer), answer.resultDocumentId()));
-        return messages.findBySessionIdOrderByCreatedAtAsc(sessionId)
-                .stream().map(AiChatMessageView::from).toList();
+        return transactions.execute(status -> {
+            messages.save(ChatMessage.answer(sessionId, answerText(answer), answer.resultDocumentId()));
+            return messages.findBySessionIdOrderByCreatedAtAsc(sessionId)
+                    .stream().map(AiChatMessageView::from).toList();
+        });
     }
 
     /** 현재 사용자가 생성한 채팅방인지 확인한다. */
