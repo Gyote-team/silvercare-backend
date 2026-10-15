@@ -12,17 +12,31 @@ public interface ResultDocumentEvidenceRepository extends Repository<AiResultDoc
 
     /** 선택한 문서에서 분석이 완료된 최신 원문 근거를 조회한다. */
     @Query(value = """
-            SELECT CAST(ei.id AS VARCHAR) AS "itemId", CAST(d.id AS VARCHAR) AS "documentId",
-                   dp.page_no AS "pageNo", ei.normalized_name AS "label", ei.raw_value AS "rawValue",
-                   ei.unit AS "unit", ei.reference_range AS "referenceRange", ei.source_text AS "sourceText"
-            FROM extracted_items ei
-            JOIN document_analyses da ON da.id = ei.analysis_id AND da.status = 'SUCCEEDED'
-            JOIN documents d ON d.id = da.document_id
-            LEFT JOIN document_pages dp ON dp.id = ei.page_id
-            WHERE d.patient_id = :patientId
-              AND d.id IN (:documentIds)
-              AND d.deleted_at IS NULL
-            ORDER BY d.created_at DESC, ei.created_at DESC
+            WITH ranked_evidence AS (
+                SELECT CAST(ei.id AS VARCHAR) AS "itemId", CAST(d.id AS VARCHAR) AS "documentId",
+                       dp.page_no AS "pageNo", ei.normalized_name AS "label", ei.raw_value AS "rawValue",
+                       ei.unit AS "unit", ei.reference_range AS "referenceRange", ei.source_text AS "sourceText",
+                       ROW_NUMBER() OVER (PARTITION BY d.id ORDER BY ei.created_at DESC, ei.id DESC) AS item_rank,
+                       d.created_at AS document_created_at
+                FROM documents d
+                JOIN document_analyses da ON da.id = (
+                    SELECT latest.id
+                    FROM document_analyses latest
+                    WHERE latest.document_id = d.id
+                    ORDER BY latest.created_at DESC, latest.id DESC
+                    LIMIT 1
+                )
+                JOIN extracted_items ei ON ei.analysis_id = da.id
+                LEFT JOIN document_pages dp ON dp.id = ei.page_id
+                WHERE d.patient_id = :patientId
+                  AND d.id IN (:documentIds)
+                  AND d.deleted_at IS NULL
+                  AND da.status = 'SUCCEEDED'
+            )
+            SELECT "itemId", "documentId", "pageNo", "label", "rawValue", "unit",
+                   "referenceRange", "sourceText"
+            FROM ranked_evidence
+            ORDER BY item_rank, document_created_at DESC, "documentId" DESC
             LIMIT 40
             """, nativeQuery = true)
     List<EvidenceRow> findEvidence(@Param("patientId") UUID patientId, @Param("documentIds") List<UUID> documentIds);
