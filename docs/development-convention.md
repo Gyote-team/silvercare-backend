@@ -11,7 +11,7 @@ src/main/java/com/gyote/silvercare/
 ├─ care_relation/                    # 개인-보호자 연결
 ├─ notification/                     # 시스템 알림 조회·읽음 및 활동 이벤트
 ├─ health_record/                    # 건강기록 CRUD 및 권한 검증
-├─ visit/                            # 병원 방문 (구조 준비)
+├─ visit/                            # 병원 방문 CRUD·취소 및 하위 자료 참조 조회
 ├─ medical_document/                 # 의료 문서·업로드 메타데이터 (구조 준비)
 ├─ action_item/                      # 할 일 후보 승인·거절 (구조 준비)
 ├─ schedule/                         # 일정·복약 알림 (구조 준비)

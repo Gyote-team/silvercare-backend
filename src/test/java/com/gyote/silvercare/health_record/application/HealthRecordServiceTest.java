@@ -271,7 +271,7 @@ class HealthRecordServiceTest {
         UUID valid = UUID.randomUUID(), wrong = UUID.randomUUID(), canceled = UUID.randomUUID();
         String sql =
                 "select count(*) from visits where id=? and patient_id=? and deleted_at is null and"
-                    + " status not in ('CANCELLED','CANCELED')";
+                    + " status <> 'CANCELED'";
         org.mockito.Mockito.when(visitLookup.queryForObject(sql, Integer.class, valid, patientId))
                 .thenReturn(1);
         org.mockito.Mockito.when(visitLookup.queryForObject(sql, Integer.class, wrong, patientId))
