@@ -13,12 +13,14 @@ public class AiResultWorkerClient {
     private static final String TOKEN_HEADER = "X-Internal-Token";
     private final RestClient restClient;
 
+    // 내부 인증 토큰을 포함한 AI Backend 전용 HTTP 클라이언트를 구성한다.
     public AiResultWorkerClient(RestClient.Builder builder, String baseUrl, String token) {
         this.restClient = builder.baseUrl(baseUrl.replaceAll("/+$", ""))
                 .defaultHeader(TOKEN_HEADER, token)
                 .build();
     }
 
+    // AI Backend에 문서 근거와 질문을 전달해 답변 생성을 요청한다.
     public WorkerResponse generate(WorkerRequest request) {
         return restClient.post()
                 .uri("/internal/ai-result-documents/generate")

@@ -9,6 +9,7 @@ import org.springframework.web.client.RestClient;
 @Configuration
 public class AiResultWorkerConfig {
 
+    // 설정된 AI Backend 주소와 내부 토큰으로 연동 클라이언트를 등록한다.
     @Bean
     @ConditionalOnProperty(prefix = "silvercare.ai", name = "base-url")
     AiResultWorkerClient aiResultWorkerClient(

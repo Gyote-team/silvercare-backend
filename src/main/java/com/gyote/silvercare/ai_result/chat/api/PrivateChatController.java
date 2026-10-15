@@ -26,6 +26,7 @@ public class PrivateChatController {
     private final PrivateChatService chats;
     private final UserQueryService users;
 
+    // 선택한 질문 대상과 대화할 새 채팅방을 생성한다.
     @PostMapping("/api/ai-chat-sessions")
     public ChatSessionResponse open(
             @AuthenticationPrincipal OAuth2User principal,
@@ -34,6 +35,7 @@ public class PrivateChatController {
         return chats.open(actor(principal), request);
     }
 
+    // 질문 대상과 현재 사용자의 채팅방 목록을 조회한다.
     @GetMapping("/api/ai-chat-sessions")
     public List<ChatSessionResponse> list(
             @AuthenticationPrincipal OAuth2User principal,
@@ -42,6 +44,7 @@ public class PrivateChatController {
         return chats.list(actor(principal), patientId);
     }
 
+    // 채팅방에 질문을 저장하고 문서 근거 기반 AI 답변을 생성한다.
     @PostMapping("/api/ai-chat-sessions/{sessionId}/messages")
     public List<ChatMessageResponse> ask(
             @AuthenticationPrincipal OAuth2User principal,
@@ -51,6 +54,7 @@ public class PrivateChatController {
         return chats.ask(actor(principal), sessionId, request);
     }
 
+    // 채팅방의 전체 대화 내역을 조회한다.
     @GetMapping("/api/ai-chat-sessions/{sessionId}/messages")
     public List<ChatMessageResponse> messages(
             @AuthenticationPrincipal OAuth2User principal,
@@ -59,6 +63,7 @@ public class PrivateChatController {
         return chats.messages(actor(principal), sessionId);
     }
 
+    // 인증 정보에서 현재 요청 사용자를 안전하게 조회한다.
     private User actor(OAuth2User principal) {
         Object userId = principal.getAttributes().get("userId");
         if (userId == null) {

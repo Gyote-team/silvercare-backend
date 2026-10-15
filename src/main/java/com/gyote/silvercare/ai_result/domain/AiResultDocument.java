@@ -52,6 +52,7 @@ public class AiResultDocument {
     @Column(name = "completed_at")
     private Instant completedAt;
 
+    // AI 답변 생성 대기 상태의 결과 문서를 생성한다.
     public static AiResultDocument queued(UUID patientId, UUID requesterId, String question, QuestionType type) {
         AiResultDocument result = new AiResultDocument();
         result.id = UUID.randomUUID();
@@ -65,10 +66,12 @@ public class AiResultDocument {
         return result;
     }
 
+    // AI 답변 생성 작업을 실행 중 상태로 변경한다.
     public void markRunning() {
         jobStatus = AiJobStatus.RUNNING;
     }
 
+    // 생성된 답변과 근거를 저장하고 작업을 성공 상태로 완료한다.
     public void complete(ResultStatus status, String title, String content, String citationJson) {
         jobStatus = AiJobStatus.SUCCEEDED;
         resultStatus = status;
@@ -78,6 +81,7 @@ public class AiResultDocument {
         completedAt = Instant.now();
     }
 
+    // 실패 사유를 저장하고 작업을 실패 상태로 완료한다.
     public void fail(String message) {
         jobStatus = AiJobStatus.FAILED;
         errorMessage = message;

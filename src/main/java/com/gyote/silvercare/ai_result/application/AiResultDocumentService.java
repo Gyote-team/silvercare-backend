@@ -34,6 +34,7 @@ public class AiResultDocumentService {
     private final ObjectProvider<AiResultWorkerClient> workers;
     private final ObjectMapper objectMapper;
 
+    // 접근 가능한 문서 근거를 모아 AI 답변을 생성하고 결과를 저장한다.
     @Transactional
     public AiResultDocumentResponse create(User actor, CreateAiResultDocumentRequest request) {
         UUID patientId = permissions.resolveTargetPatient(actor, request.patientId());
@@ -87,6 +88,7 @@ public class AiResultDocumentService {
         return response(result);
     }
 
+    // 접근 권한을 확인한 뒤 AI 답변 문서를 조회한다.
     @Transactional(readOnly = true)
     public AiResultDocumentResponse get(User actor, UUID resultDocumentId) {
         AiResultDocument result = resultDocuments.findById(resultDocumentId)
@@ -95,6 +97,7 @@ public class AiResultDocumentService {
         return response(result);
     }
 
+    // 요청 식별자로 AI 답변 생성 상태와 결과를 조회한다.
     @Transactional(readOnly = true)
     public AiResultDocumentResponse getByRequestId(User actor, UUID requestId) {
         AiResultDocument result = resultDocuments.findByRequestId(requestId)
@@ -103,6 +106,7 @@ public class AiResultDocumentService {
         return response(result);
     }
 
+    // AI 답변 문장과 원문 근거를 JSON 형태로 직렬화한다.
     private String citations(
             AiResultWorkerClient.WorkerResponse response,
             List<AiResultWorkerClient.Evidence> evidence
@@ -117,6 +121,7 @@ public class AiResultDocumentService {
         }
     }
 
+    // AI 답변 문서 엔티티를 API 응답 형태로 변환한다.
     private static AiResultDocumentResponse response(AiResultDocument result) {
         return new AiResultDocumentResponse(
                 result.getId(), result.getRequestId(), result.getPatientId(), result.getQuestionType(),

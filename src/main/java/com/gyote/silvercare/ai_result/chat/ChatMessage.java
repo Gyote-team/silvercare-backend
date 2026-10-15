@@ -32,6 +32,7 @@ public class ChatMessage {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // 지정한 역할과 내용으로 새 채팅 메시지를 생성한다.
     public static ChatMessage of(UUID sessionId, ChatRole role, String content) {
         ChatMessage message = new ChatMessage();
         message.id = UUID.randomUUID();
@@ -42,6 +43,7 @@ public class ChatMessage {
         return message;
     }
 
+    // AI 답변 문서와 연결된 어시스턴트 메시지를 생성한다.
     public static ChatMessage answer(UUID sessionId, String content, UUID resultDocumentId) {
         ChatMessage message = of(sessionId, ChatRole.ASSISTANT, content);
         message.resultDocumentId = resultDocumentId;

@@ -26,6 +26,7 @@ public class ChatSession {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // 질문 대상과 생성 사용자를 지정해 새 채팅방을 연다.
     public static ChatSession open(UUID patientId, UUID userId, String title) {
         ChatSession session = new ChatSession();
         session.id = UUID.randomUUID();
@@ -36,6 +37,7 @@ public class ChatSession {
         return session;
     }
 
+    // 첫 질문을 반영한 제목으로 채팅방 이름을 변경한다.
     public void rename(String title) {
         this.title = title;
     }
