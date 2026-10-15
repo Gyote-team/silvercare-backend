@@ -17,6 +17,7 @@ Next.js Web / WebView
         ▼
 Spring Boot
   ├─ 인증 · 개인-보호자 연결 권한 · 도메인 API
+  ├─ AI 채팅방 · 메시지 · AI 답변 결과 저장
   ├─ PostgreSQL + pgvector     업무 데이터 · 벡터
   └─ Object Storage            의료 서류 원본
 
@@ -25,6 +26,7 @@ Python AI Server (별도 레포)
 ```
 
 브라우저는 Python AI 서버를 직접 호출하지 않습니다. AI 요청 전 Spring이 인증과 개인-보호자 연결을 검증하고, 허용된 식별자만 Python에 전달합니다.
+Spring의 `ai_chat` 도메인은 채팅방과 메시지를 관리하고, `ai_result` 도메인은 선택 문서의 근거 조회와 Python AI 서버 호출 및 답변 결과 저장을 담당합니다.
 
 ## 권한과 데이터
 
