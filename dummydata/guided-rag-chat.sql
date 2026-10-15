@@ -36,24 +36,30 @@ ON CONFLICT (kakao_id) DO UPDATE SET
     role = EXCLUDED.role,
     status = EXCLUDED.status;
 
+-- 데모 로그인으로 이미 만들어진 계정의 실제 ID를 사용한다.
+SELECT id AS demo_patient_user_id FROM users WHERE kakao_id = 'demo-patient' \gset
+SELECT id AS demo_caregiver_user_id FROM users WHERE kakao_id = 'demo-caregiver' \gset
+
 INSERT INTO patients (id, user_id, birth_date, gender, invite_code, status)
-VALUES ('12000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', DATE '1948-03-12', 'FEMALE', 'DUMMY001PATIENT', 'ACTIVE')
+VALUES ('12000000-0000-0000-0000-000000000001', :'demo_patient_user_id', DATE '1948-03-12', 'FEMALE', 'DUMMY001PATIENT', 'ACTIVE')
 ON CONFLICT (user_id) DO UPDATE SET status = EXCLUDED.status;
 
+SELECT id AS demo_patient_id FROM patients WHERE user_id = :'demo_patient_user_id' \gset
+
 INSERT INTO caregiver_links (id, patient_id, caregiver_user_id, relation, status, requested_at, accepted_at)
-VALUES ('11000000-0000-0000-0000-000000000001', '12000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', '딸', 'ACTIVE', TIMESTAMPTZ '2026-09-01 09:00:00+09', TIMESTAMPTZ '2026-09-01 09:05:00+09')
+VALUES ('11000000-0000-0000-0000-000000000001', :'demo_patient_id', :'demo_caregiver_user_id', '딸', 'ACTIVE', TIMESTAMPTZ '2026-09-01 09:00:00+09', TIMESTAMPTZ '2026-09-01 09:05:00+09')
 ON CONFLICT (id) DO UPDATE SET status = 'ACTIVE', accepted_at = EXCLUDED.accepted_at;
 
 INSERT INTO visits (id, patient_id, hospital_name, department, visited_on, status, memo, created_at, updated_at)
 VALUES
-    ('a1000000-0000-0000-0000-000000000001', '12000000-0000-0000-0000-000000000001', '은하내과', '내과', DATE '2025-10-12', 'COMPLETED', '정기 혈액검사', TIMESTAMPTZ '2025-10-12 09:00:00+09', TIMESTAMPTZ '2025-10-12 09:00:00+09'),
-    ('a2000000-0000-0000-0000-000000000001', '12000000-0000-0000-0000-000000000001', '은하내과', '내과', DATE '2026-09-18', 'COMPLETED', '정기 혈액검사 및 당 조절 확인', TIMESTAMPTZ '2026-09-18 09:00:00+09', TIMESTAMPTZ '2026-09-18 09:00:00+09')
+    ('a1000000-0000-0000-0000-000000000001', :'demo_patient_id', '은하내과', '내과', DATE '2025-10-12', 'DONE', '정기 혈액검사', TIMESTAMPTZ '2025-10-12 09:00:00+09', TIMESTAMPTZ '2025-10-12 09:00:00+09'),
+    ('a2000000-0000-0000-0000-000000000001', :'demo_patient_id', '은하내과', '내과', DATE '2026-09-18', 'DONE', '정기 혈액검사 및 당 조절 확인', TIMESTAMPTZ '2026-09-18 09:00:00+09', TIMESTAMPTZ '2026-09-18 09:00:00+09')
 ON CONFLICT (id) DO UPDATE SET visited_on = EXCLUDED.visited_on, memo = EXCLUDED.memo, status = EXCLUDED.status;
 
 INSERT INTO documents (id, visit_id, patient_id, uploader_user_id, storage_key, file_name, mime_type, file_size_bytes, document_type, status, status_changed_at, created_at, updated_at)
 VALUES
-    ('b1000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', '12000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'dummy/rag/lab-2025-10.pdf', '2025-10-12_혈액검사결과.pdf', 'application/pdf', 120000, 'LAB_RESULT', 'READY', TIMESTAMPTZ '2025-10-12 10:00:00+09', TIMESTAMPTZ '2025-10-12 10:00:00+09', TIMESTAMPTZ '2025-10-12 10:00:00+09'),
-    ('b2000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', '12000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'dummy/rag/lab-2026-09.pdf', '2026-09-18_혈액검사결과.pdf', 'application/pdf', 124000, 'LAB_RESULT', 'READY', TIMESTAMPTZ '2026-09-18 10:00:00+09', TIMESTAMPTZ '2026-09-18 10:00:00+09', TIMESTAMPTZ '2026-09-18 10:00:00+09')
+    ('b1000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', :'demo_patient_id', :'demo_patient_user_id', 'dummy/rag/lab-2025-10.pdf', '2025-10-12_혈액검사결과.pdf', 'application/pdf', 120000, 'LAB_RESULT', 'READY', TIMESTAMPTZ '2025-10-12 10:00:00+09', TIMESTAMPTZ '2025-10-12 10:00:00+09', TIMESTAMPTZ '2025-10-12 10:00:00+09'),
+    ('b2000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', :'demo_patient_id', :'demo_patient_user_id', 'dummy/rag/lab-2026-09.pdf', '2026-09-18_혈액검사결과.pdf', 'application/pdf', 124000, 'LAB_RESULT', 'READY', TIMESTAMPTZ '2026-09-18 10:00:00+09', TIMESTAMPTZ '2026-09-18 10:00:00+09', TIMESTAMPTZ '2026-09-18 10:00:00+09')
 ON CONFLICT (id) DO UPDATE SET file_name = EXCLUDED.file_name, status = 'READY', deleted_at = NULL, patient_id = EXCLUDED.patient_id;
 
 INSERT INTO document_pages (id, document_id, page_no, ocr_status, ocr_text, width_px, height_px, created_at)
@@ -83,9 +89,45 @@ VALUES
 -- 실제 벡터 검색은 아직 연결 전이지만, 청킹·임베딩 완료 상태를 재현하는 768차원 벡터 행이다.
 INSERT INTO embeddings (id, source_type, source_id, patient_id, visit_id, embedding, model_name, dimensions, created_at)
 VALUES
-    ('91000000-0000-0000-0000-000000000001', 'DOCUMENT_CHUNK', 'd1000000-0000-0000-0000-000000000001', '12000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', array_fill(0::real, ARRAY[768])::vector, 'dummy-embedding-768', 768, TIMESTAMPTZ '2025-10-12 10:02:05+09'),
-    ('91000000-0000-0000-0000-000000000002', 'DOCUMENT_CHUNK', 'd1000000-0000-0000-0000-000000000002', '12000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', array_fill(0::real, ARRAY[768])::vector, 'dummy-embedding-768', 768, TIMESTAMPTZ '2025-10-12 10:02:05+09'),
-    ('92000000-0000-0000-0000-000000000001', 'DOCUMENT_CHUNK', 'd2000000-0000-0000-0000-000000000001', '12000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', array_fill(0::real, ARRAY[768])::vector, 'dummy-embedding-768', 768, TIMESTAMPTZ '2026-09-18 10:02:05+09'),
-    ('92000000-0000-0000-0000-000000000002', 'DOCUMENT_CHUNK', 'd2000000-0000-0000-0000-000000000002', '12000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', array_fill(0::real, ARRAY[768])::vector, 'dummy-embedding-768', 768, TIMESTAMPTZ '2026-09-18 10:02:05+09');
+    ('91000000-0000-0000-0000-000000000001', 'DOCUMENT_CHUNK', 'd1000000-0000-0000-0000-000000000001', :'demo_patient_id', 'a1000000-0000-0000-0000-000000000001', array_fill(0::real, ARRAY[768])::vector, 'dummy-embedding-768', 768, TIMESTAMPTZ '2025-10-12 10:02:05+09'),
+    ('91000000-0000-0000-0000-000000000002', 'DOCUMENT_CHUNK', 'd1000000-0000-0000-0000-000000000002', :'demo_patient_id', 'a1000000-0000-0000-0000-000000000001', array_fill(0::real, ARRAY[768])::vector, 'dummy-embedding-768', 768, TIMESTAMPTZ '2025-10-12 10:02:05+09'),
+    ('92000000-0000-0000-0000-000000000001', 'DOCUMENT_CHUNK', 'd2000000-0000-0000-0000-000000000001', :'demo_patient_id', 'a2000000-0000-0000-0000-000000000001', array_fill(0::real, ARRAY[768])::vector, 'dummy-embedding-768', 768, TIMESTAMPTZ '2026-09-18 10:02:05+09'),
+    ('92000000-0000-0000-0000-000000000002', 'DOCUMENT_CHUNK', 'd2000000-0000-0000-0000-000000000002', :'demo_patient_id', 'a2000000-0000-0000-0000-000000000001', array_fill(0::real, ARRAY[768])::vector, 'dummy-embedding-768', 768, TIMESTAMPTZ '2026-09-18 10:02:05+09');
+
+-- AI 서버를 호출하지 않아도 채팅과 원문 근거 화면을 확인할 수 있는 예시 답변이다.
+INSERT INTO ai_result_documents (
+    id, request_id, patient_id, requested_by_user_id, question, question_type,
+    job_status, result_status, title, content, citation_json, created_at, completed_at
+)
+VALUES
+    ('ad000000-0000-0000-0000-000000000001', 'ae000000-0000-0000-0000-000000000001', :'demo_patient_id', :'demo_patient_user_id',
+     '최근 혈액검사 결과를 쉽게 설명해 주세요', 'DOCUMENT_EASY_EXPLANATION', 'SUCCEEDED', 'COMPLETE',
+     '최근 혈액검사 설명', '2026년 9월 검사에서 당화혈색소(HbA1c)는 6.5%로 기록되어 있습니다.',
+     '{"sentences":[{"text":"2026년 9월 검사에서 당화혈색소(HbA1c)는 6.5%로 기록되어 있습니다.","citation_ids":["ab000000-0000-0000-0000-000000000001"]}],"sources":[{"citation_id":"ab000000-0000-0000-0000-000000000001","document_id":"b2000000-0000-0000-0000-000000000001","page_no":1,"label":"당화혈색소","source_text":"당화혈색소(HbA1c) 6.5 %","value":"6.5","unit":"%"}]}',
+     TIMESTAMPTZ '2026-09-18 10:10:00+09', TIMESTAMPTZ '2026-09-18 10:10:05+09'),
+    ('ad000000-0000-0000-0000-000000000002', 'ae000000-0000-0000-0000-000000000002', :'demo_patient_id', :'demo_caregiver_user_id',
+     '지난번 검사와 이번 검사를 비교해 주세요', 'LAB_RESULT_COMPARISON', 'SUCCEEDED', 'COMPLETE',
+     '혈액검사 비교', '당화혈색소는 2025년 10월 7.1%에서 2026년 9월 6.5%로 기록되어 0.6%p 낮아졌습니다.',
+     '{"sentences":[{"text":"당화혈색소는 2025년 10월 7.1%에서 2026년 9월 6.5%로 기록되어 0.6%p 낮아졌습니다.","citation_ids":["ab000000-0000-0000-0000-000000000002","ab000000-0000-0000-0000-000000000003"]}],"sources":[{"citation_id":"ab000000-0000-0000-0000-000000000002","document_id":"b1000000-0000-0000-0000-000000000001","page_no":1,"label":"이전 당화혈색소","source_text":"당화혈색소(HbA1c) 7.1 %","value":"7.1","unit":"%"},{"citation_id":"ab000000-0000-0000-0000-000000000003","document_id":"b2000000-0000-0000-0000-000000000001","page_no":1,"label":"최근 당화혈색소","source_text":"당화혈색소(HbA1c) 6.5 %","value":"6.5","unit":"%"}]}',
+     TIMESTAMPTZ '2026-09-18 10:20:00+09', TIMESTAMPTZ '2026-09-18 10:20:05+09')
+ON CONFLICT (id) DO UPDATE SET
+    patient_id = EXCLUDED.patient_id,
+    requested_by_user_id = EXCLUDED.requested_by_user_id,
+    content = EXCLUDED.content,
+    citation_json = EXCLUDED.citation_json;
+
+INSERT INTO chat_sessions (id, patient_id, started_by_user_id, title, created_at)
+VALUES
+    ('ac000000-0000-0000-0000-000000000001', :'demo_patient_id', :'demo_patient_user_id', '최근 혈액검사 설명', TIMESTAMPTZ '2026-09-18 10:09:00+09'),
+    ('ac000000-0000-0000-0000-000000000002', :'demo_patient_id', :'demo_caregiver_user_id', '지난 검사와 비교', TIMESTAMPTZ '2026-09-18 10:19:00+09')
+ON CONFLICT (id) DO UPDATE SET patient_id = EXCLUDED.patient_id, started_by_user_id = EXCLUDED.started_by_user_id;
+
+INSERT INTO chat_messages (id, session_id, role, content, result_document_id, created_at)
+VALUES
+    ('af000000-0000-0000-0000-000000000001', 'ac000000-0000-0000-0000-000000000001', 'USER', '최근 혈액검사 결과를 쉽게 설명해 주세요', NULL, TIMESTAMPTZ '2026-09-18 10:09:01+09'),
+    ('af000000-0000-0000-0000-000000000002', 'ac000000-0000-0000-0000-000000000001', 'ASSISTANT', '2026년 9월 검사에서 당화혈색소(HbA1c)는 6.5%로 기록되어 있습니다.', 'ad000000-0000-0000-0000-000000000001', TIMESTAMPTZ '2026-09-18 10:10:05+09'),
+    ('af000000-0000-0000-0000-000000000003', 'ac000000-0000-0000-0000-000000000002', 'USER', '지난번 검사와 이번 검사를 비교해 주세요', NULL, TIMESTAMPTZ '2026-09-18 10:19:01+09'),
+    ('af000000-0000-0000-0000-000000000004', 'ac000000-0000-0000-0000-000000000002', 'ASSISTANT', '당화혈색소는 2025년 10월 7.1%에서 2026년 9월 6.5%로 기록되어 0.6%p 낮아졌습니다.', 'ad000000-0000-0000-0000-000000000002', TIMESTAMPTZ '2026-09-18 10:20:05+09')
+ON CONFLICT (id) DO UPDATE SET content = EXCLUDED.content, result_document_id = EXCLUDED.result_document_id;
 
 COMMIT;
