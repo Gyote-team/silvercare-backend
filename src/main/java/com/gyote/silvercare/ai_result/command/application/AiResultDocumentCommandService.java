@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gyote.silvercare.ai_result.domain.QuestionType;
 import com.gyote.silvercare.ai_result.domain.entity.AiResultDocument;
 import com.gyote.silvercare.ai_result.domain.repository.AiResultDocumentRepository;
-import com.gyote.silvercare.ai_result.domain.repository.ResultDocumentEvidenceRepository;
 import com.gyote.silvercare.ai_result.infrastructure.AiResultGenerationClient;
 import com.gyote.silvercare.ai_result.query.model.AiResultDocumentView;
 import com.gyote.silvercare.global.status.ResultStatus;
@@ -28,7 +27,7 @@ import java.util.UUID;
 public class AiResultDocumentCommandService {
 
     private final AiResultDocumentRepository resultDocuments;
-    private final ResultDocumentEvidenceRepository evidenceRepository;
+    private final AiEvidenceRetriever evidenceRetriever;
     private final CareRelationPermissionService permissions;
     private final ObjectProvider<AiResultGenerationClient> generationClients;
     private final ObjectMapper objectMapper;
@@ -46,9 +45,8 @@ public class AiResultDocumentCommandService {
         AiResultDocument result = resultDocuments.save(
                 AiResultDocument.queued(patientId, actor.getId(), question, questionType)
         );
-        List<ResultDocumentEvidenceRepository.EvidenceRow> rows =
-                evidenceRepository.findEvidence(patientId, documentIds);
-        if (rows.isEmpty()) {
+        List<AiResultGenerationClient.Evidence> evidence = evidenceRetriever.retrieve(patientId, documentIds);
+        if (evidence.isEmpty()) {
             result.complete(ResultStatus.INSUFFICIENT, "근거 부족", "선택한 문서에서 분석 완료된 근거를 찾지 못했어요.", "[]");
             return AiResultDocumentView.from(result);
         }
@@ -59,12 +57,6 @@ public class AiResultDocumentCommandService {
         }
         result.markRunning();
         try {
-            List<AiResultGenerationClient.Evidence> evidence = rows.stream().map(row ->
-                    new AiResultGenerationClient.Evidence(
-                            UUID.randomUUID(), "EXTRACTED_ITEM", UUID.fromString(row.getItemId()),
-                            UUID.fromString(row.getDocumentId()), row.getPageNo(), row.getLabel(), row.getSourceText(),
-                            row.getRawValue(), row.getUnit(), row.getReferenceRange()
-                    )).toList();
             AiResultGenerationClient.GenerationResponse generated = client.generate(
                     new AiResultGenerationClient.GenerationRequest(
                             result.getRequestId(), patientId, actor.getId(), question, questionType, evidence
