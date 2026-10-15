@@ -5,7 +5,7 @@
 ## HTTP 계약
 
 - POST `/api/visits`: 201, 방문 상세
-- GET `/api/visits?patientId=&cursor=&size=&includeCanceled=`: 200, items·nextCursor·hasNext
+- GET `/api/visits?patientId=&cursor=&size=&includeCanceled=&visitStatus=`: 200, items·nextCursor·hasNext
 - GET `/api/visits/{visitId}`: 200, 방문 상세 (취소 방문도 조회 가능)
 - PUT `/api/visits/{visitId}`: 200, 수정된 방문 상세
 - DELETE `/api/visits/{visitId}`: 204, CANCELED 전환 (반복 요청도 204)
@@ -31,6 +31,8 @@ visitedOn과 visitStatus는 필수다. hospitalName·department·memo는 선택�
 version은 등록 시 생략할 수 있지만 수정 시 조회 응답의 값을 반드시 보낸다. 누락·음수는 400 GLOBAL_002, 현재 저장된 버전과 다르면 409 GLOBAL_004로 거절한다. 수정 응답은 증가한 version을 반환한다. 이는 오래된 화면의 순차 저장과 트랜잭션이 겹친 동시 수정을 모두 방어한다.
 
 목록은 방문일 DESC, id DESC 순서다. size 기본 20·최대 100, includeCanceled 기본 false다. 커서는 대상 개인과 취소 필터에 묶이며 다른 개인이나 필터에 재사용하면 400이다. 동일한 방문일도 UUID로 구분해 누락 없이 조회한다.
+
+visitStatus는 선택이며 SCHEDULED·DONE·CANCELED 중 한 상태만 조회할 수 있다. 필터는 페이지네이션 이전에 적용하고 커서에도 묶인다. 취소된 방문만 보려면 visitStatus=CANCELED와 includeCanceled=true를 함께 전달한다. 프론트는 기본 예정·완료, 전체, 방문 예정, 방문 완료, 취소된 방문을 선택하도록 제공한다.
 
 ## 상태 및 오류
 

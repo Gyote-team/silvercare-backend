@@ -7,6 +7,7 @@ import com.gyote.silvercare.visit.api.dto.response.VisitPageResponseDto;
 import com.gyote.silvercare.visit.api.dto.response.VisitResponseDto;
 import com.gyote.silvercare.visit.api.mapper.VisitResponseMapper;
 import com.gyote.silvercare.visit.command.application.VisitCommandService;
+import com.gyote.silvercare.visit.domain.VisitStatus;
 import com.gyote.silvercare.visit.query.application.VisitQueryService;
 
 import jakarta.validation.Valid;
@@ -54,9 +55,11 @@ public class VisitApiController {
             @RequestParam(required = false) UUID patientId,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer size,
-            @RequestParam(defaultValue = "false") boolean includeCanceled) {
+            @RequestParam(defaultValue = "false") boolean includeCanceled,
+            @RequestParam(required = false) VisitStatus visitStatus) {
         return mapper.toResponse(
-                queries.list(actor(principal), patientId, cursor, size, includeCanceled));
+                queries.list(
+                        actor(principal), patientId, cursor, size, includeCanceled, visitStatus));
     }
 
     /** 취소 여부와 관계없이 당사자의 방문 상세를 조회한다. */

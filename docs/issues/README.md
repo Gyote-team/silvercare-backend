@@ -4,3 +4,4 @@
 
 - [이슈 11: 건강기록 및 계정 전환](issue-11-health-records.md)
 - [이슈 13: 병원 방문 관리](issue-13-visits.md)
+- [이슈 13: 두 로그인 창 충돌 및 화면 흐름 테스트](issue-13-browser-checks.md)

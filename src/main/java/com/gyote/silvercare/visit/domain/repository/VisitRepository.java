@@ -21,23 +21,26 @@ public interface VisitRepository extends JpaRepository<Visit, UUID> {
     /** 첫 페이지는 nullable 커서 없이 조회한다. */
     @Query(
             "select v from Visit v where v.patientId=:patientId and v.deletedAt is null and"
-                + " (:includeCanceled=true or v.status<>:canceled) order by v.visitedOn desc,v.id"
-                + " desc")
+                + " (:status is null or v.status=:status) and (:includeCanceled=true or"
+                + " v.status<>:canceled) order by v.visitedOn desc,v.id desc")
     List<Visit> findFirstPage(
             @Param("patientId") UUID patientId,
             @Param("includeCanceled") boolean includeCanceled,
             @Param("canceled") VisitStatus canceled,
+            @Param("status") VisitStatus status,
             Pageable pageable);
 
     /** 같은 날짜도 UUID로 구분해 누락 없이 조회한다. */
     @Query(
             "select v from Visit v where v.patientId=:patientId and v.deletedAt is null and"
-                + " (:includeCanceled=true or v.status<>:canceled) and (v.visitedOn<:before or"
-                + " (v.visitedOn=:before and v.id<:beforeId)) order by v.visitedOn desc,v.id desc")
+                + " (:status is null or v.status=:status) and (:includeCanceled=true or"
+                + " v.status<>:canceled) and (v.visitedOn<:before or (v.visitedOn=:before and"
+                + " v.id<:beforeId)) order by v.visitedOn desc,v.id desc")
     List<Visit> findPage(
             @Param("patientId") UUID patientId,
             @Param("includeCanceled") boolean includeCanceled,
             @Param("canceled") VisitStatus canceled,
+            @Param("status") VisitStatus status,
             @Param("before") LocalDate before,
             @Param("beforeId") UUID beforeId,
             Pageable pageable);

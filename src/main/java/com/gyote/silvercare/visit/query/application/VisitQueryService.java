@@ -45,7 +45,8 @@ public class VisitQueryService {
             UUID patientId,
             String cursor,
             Integer requestedSize,
-            boolean includeCanceled) {
+            boolean includeCanceled,
+            VisitStatus status) {
         UUID target = access.requirePatient(actor, patientId);
         int size = requestedSize == null ? 20 : requestedSize;
         if (size < 1 || size > 100) throw new BusinessException(GlobalErrorCode.INVALID_REQUEST);
@@ -56,9 +57,11 @@ public class VisitQueryService {
                 String[] parts =
                         new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8)
                                 .split("\\|", -1);
-                if (parts.length != 4
+                if ((parts.length != 4 && parts.length != 5)
                         || !target.equals(UUID.fromString(parts[0]))
-                        || !String.valueOf(includeCanceled).equals(parts[1]))
+                        || !String.valueOf(includeCanceled).equals(parts[1])
+                        || !(status == null ? "" : status.name())
+                                .equals(parts.length == 5 ? parts[4] : ""))
                     throw new IllegalArgumentException();
                 before = LocalDate.parse(parts[2]);
                 beforeId = UUID.fromString(parts[3]);
@@ -72,11 +75,13 @@ public class VisitQueryService {
                                 target,
                                 includeCanceled,
                                 VisitStatus.CANCELED,
+                                status,
                                 PageRequest.of(0, size + 1))
                         : visits.findPage(
                                 target,
                                 includeCanceled,
                                 VisitStatus.CANCELED,
+                                status,
                                 before,
                                 beforeId,
                                 PageRequest.of(0, size + 1));
@@ -95,7 +100,9 @@ public class VisitQueryService {
                                                     + "|"
                                                     + last.getVisitedOn()
                                                     + "|"
-                                                    + last.getId())
+                                                    + last.getId()
+                                                    + "|"
+                                                    + (status == null ? "" : status.name()))
                                             .getBytes(StandardCharsets.UTF_8));
         }
         return new VisitPageView(toViews(shown), next, more);

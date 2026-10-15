@@ -343,6 +343,61 @@ class VisitApiIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void statusFiltersApplyBeforePaginationAndBindCursor() throws Exception {
+        create(today, "DONE");
+        create(today, "SCHEDULED");
+        create(today, "SCHEDULED");
+        UUID canceled = create(today, "DONE");
+        mvc.perform(delete("/api/visits/" + canceled).header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+        for (String state : new String[] {"SCHEDULED", "DONE", "CANCELED"}) {
+            mvc.perform(
+                            get("/api/visits")
+                                    .param("visitStatus", state)
+                                    .param("includeCanceled", "true")
+                                    .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andExpect(
+                            jsonPath("$.items.length()").value(state.equals("SCHEDULED") ? 2 : 1))
+                    .andExpect(jsonPath("$.items[0].visitStatus").value(state));
+        }
+        String cursor =
+                json.readTree(
+                                mvc.perform(
+                                                get("/api/visits")
+                                                        .param("visitStatus", "SCHEDULED")
+                                                        .param("size", "1")
+                                                        .header("Authorization", "Bearer " + token))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.hasNext").value(true))
+                                        .andReturn()
+                                        .getResponse()
+                                        .getContentAsString())
+                        .get("nextCursor")
+                        .asText();
+        mvc.perform(
+                        get("/api/visits")
+                                .param("visitStatus", "SCHEDULED")
+                                .param("cursor", cursor)
+                                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].visitStatus").value("SCHEDULED"));
+        mvc.perform(
+                        get("/api/visits")
+                                .param("visitStatus", "DONE")
+                                .param("cursor", cursor)
+                                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("GLOBAL_002"));
+        mvc.perform(
+                        get("/api/visits")
+                                .param("visitStatus", "UNKNOWN")
+                                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+    }
+
     String caregiverBody(long version) throws Exception {
         var input =
                 (com.fasterxml.jackson.databind.node.ObjectNode) json.readTree(body(today, "DONE"));
