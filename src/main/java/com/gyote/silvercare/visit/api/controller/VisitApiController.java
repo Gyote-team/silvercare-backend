@@ -101,7 +101,8 @@ public class VisitApiController {
                         body.hospitalName(),
                         body.department(),
                         body.memo(),
-                        body.visitStatus());
+                        body.visitStatus(),
+                        body.version());
         return mapper.toResponse(queries.detail(actor, visit.getId()));
     }
 

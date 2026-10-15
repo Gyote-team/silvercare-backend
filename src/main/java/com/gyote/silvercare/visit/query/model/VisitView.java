@@ -19,4 +19,5 @@ public record VisitView(
         List<UUID> documentIds,
         List<UUID> healthRecordIds,
         Instant createdAt,
-        Instant updatedAt) {}
+        Instant updatedAt,
+        long version) {}

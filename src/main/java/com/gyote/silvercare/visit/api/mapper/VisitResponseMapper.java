@@ -23,7 +23,8 @@ public class VisitResponseMapper {
                 v.documentIds(),
                 v.healthRecordIds(),
                 v.createdAt(),
-                v.updatedAt());
+                v.updatedAt(),
+                v.version());
     }
 
     /** 목록과 다음 페이지 정보를 변환한다. */

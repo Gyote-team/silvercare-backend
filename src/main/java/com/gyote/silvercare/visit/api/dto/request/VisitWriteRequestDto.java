@@ -3,6 +3,7 @@ package com.gyote.silvercare.visit.api.dto.request;
 import com.gyote.silvercare.visit.domain.VisitStatus;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
@@ -15,4 +16,5 @@ public record VisitWriteRequestDto(
         @Size(max = 200) String hospitalName,
         @Size(max = 100) String department,
         @Size(max = 2000) String memo,
-        @NotNull VisitStatus visitStatus) {}
+        @NotNull VisitStatus visitStatus,
+        @PositiveOrZero Long version) {}

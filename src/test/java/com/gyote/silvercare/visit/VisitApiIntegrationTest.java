@@ -88,7 +88,9 @@ class VisitApiIntegrationTest {
                         "memo",
                         "메모",
                         "visitStatus",
-                        state));
+                        state,
+                        "version",
+                        0));
     }
 
     UUID create(LocalDate date, String state) throws Exception {
@@ -142,7 +144,7 @@ class VisitApiIntegrationTest {
 
     @Test
     void futureDateRequiresScheduledAndCancelStillAllowed() throws Exception {
-        for (String state : new String[] {"DONE", "CANCELED"})
+        for (String state : new String[] {"DONE"})
             mvc.perform(
                             post("/api/visits")
                                     .header("Authorization", "Bearer " + token)
@@ -172,7 +174,7 @@ class VisitApiIntegrationTest {
                         put("/api/visits/" + id)
                                 .header("Authorization", "Bearer " + caregiverToken)
                                 .contentType("application/json")
-                                .content(body(today, "DONE")))
+                                .content(caregiverBody(0)))
                 .andExpect(status().isOk());
         String input =
                 json.writeValueAsString(
@@ -314,7 +316,9 @@ class VisitApiIntegrationTest {
                 .andExpect(status().isForbidden());
         mvc.perform(get("/api/visits")).andExpect(status().isUnauthorized());
         for (String query :
-                new String[] {"size=0", "size=101", "size=no", "cursor=no", "includeCanceled=invalid"})
+                new String[] {
+                    "size=0", "size=101", "size=no", "cursor=no", "includeCanceled=invalid"
+                })
             mvc.perform(get("/api/visits?" + query).header("Authorization", "Bearer " + token))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("GLOBAL_002"));
@@ -337,6 +341,114 @@ class VisitApiIntegrationTest {
                         get("/api/visits/" + UUID.randomUUID())
                                 .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
+    }
+
+    String caregiverBody(long version) throws Exception {
+        var input =
+                (com.fasterxml.jackson.databind.node.ObjectNode) json.readTree(body(today, "DONE"));
+        input.put("patientId", patientId.toString());
+        input.put("version", version);
+        return json.writeValueAsString(input);
+    }
+
+    @Test
+    void canceledStatusCanOnlyBeSetByDelete() throws Exception {
+        for (LocalDate date : new LocalDate[] {today.minusDays(1), today, today.plusDays(1)}) {
+            mvc.perform(
+                            post("/api/visits")
+                                    .header("Authorization", "Bearer " + token)
+                                    .contentType("application/json")
+                                    .content(body(date, "CANCELED")))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("GLOBAL_002"));
+        }
+        UUID id = create(today, "DONE");
+        mvc.perform(
+                        put("/api/visits/" + id)
+                                .header("Authorization", "Bearer " + token)
+                                .contentType("application/json")
+                                .content(body(today, "CANCELED")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("GLOBAL_002"));
+        mvc.perform(get("/api/visits/" + id).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.visitStatus").value("DONE"))
+                .andExpect(jsonPath("$.version").value(0));
+    }
+
+    @Test
+    void caregiverUpdateRequiresExplicitPatientAndVersion() throws Exception {
+        UUID id = create(today, "DONE");
+        var relation = cares.request(caregiver, accounts.patientInviteCode(personal));
+        cares.accept(personal, relation.getId());
+        mvc.perform(
+                        put("/api/visits/" + id)
+                                .header("Authorization", "Bearer " + caregiverToken)
+                                .contentType("application/json")
+                                .content(body(today, "DONE")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("GLOBAL_002"));
+        for (String invalidVersion : new String[] {"null", "-1"}) {
+            var input =
+                    (com.fasterxml.jackson.databind.node.ObjectNode)
+                            json.readTree(caregiverBody(0));
+            input.set("version", json.readTree(invalidVersion));
+            mvc.perform(
+                            put("/api/visits/" + id)
+                                    .header("Authorization", "Bearer " + caregiverToken)
+                                    .contentType("application/json")
+                                    .content(json.writeValueAsString(input)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("GLOBAL_002"));
+        }
+        var missing =
+                (com.fasterxml.jackson.databind.node.ObjectNode) json.readTree(caregiverBody(0));
+        missing.remove("version");
+        mvc.perform(
+                        put("/api/visits/" + id)
+                                .header("Authorization", "Bearer " + caregiverToken)
+                                .contentType("application/json")
+                                .content(json.writeValueAsString(missing)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void staleScreenCannotOverwriteNewerPersonalOrCaregiverChange() throws Exception {
+        UUID id = create(today, "DONE");
+        var relation = cares.request(caregiver, accounts.patientInviteCode(personal));
+        cares.accept(personal, relation.getId());
+        mvc.perform(
+                        put("/api/visits/" + id)
+                                .header("Authorization", "Bearer " + token)
+                                .contentType("application/json")
+                                .content(body(today.minusDays(1), "DONE")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(1));
+        mvc.perform(
+                        put("/api/visits/" + id)
+                                .header("Authorization", "Bearer " + caregiverToken)
+                                .contentType("application/json")
+                                .content(caregiverBody(0)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("GLOBAL_004"));
+        mvc.perform(get("/api/visits/" + id).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.visitedOn").value(today.minusDays(1).toString()))
+                .andExpect(jsonPath("$.version").value(1));
+        mvc.perform(
+                        put("/api/visits/" + id)
+                                .header("Authorization", "Bearer " + caregiverToken)
+                                .contentType("application/json")
+                                .content(caregiverBody(1)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(2));
+        mvc.perform(
+                        put("/api/visits/" + id)
+                                .header("Authorization", "Bearer " + token)
+                                .contentType("application/json")
+                                .content(body(today, "DONE")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("GLOBAL_004"));
+        mvc.perform(get("/api/visits").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.items[0].version").value(2));
     }
 
     @Test

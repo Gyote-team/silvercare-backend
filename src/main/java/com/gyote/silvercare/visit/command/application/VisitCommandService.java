@@ -52,14 +52,20 @@ public class VisitCommandService {
             String hospital,
             String department,
             String memo,
-            VisitStatus status) {
+            VisitStatus status,
+            Long version) {
         Visit visit = require(actor, id);
         if (patientId != null && !patientId.equals(visit.getPatientId()))
             throw new BusinessException(GlobalErrorCode.INVALID_REQUEST);
+        access.requirePatient(actor, patientId);
         if (visit.getStatus() == VisitStatus.CANCELED)
             throw new BusinessException(VisitErrorCode.CANCELED_IMMUTABLE);
+        if (version == null || version < 0)
+            throw new BusinessException(GlobalErrorCode.INVALID_REQUEST);
+        if (visit.getVersion() != version) throw new BusinessException(GlobalErrorCode.CONFLICT);
         validate(date, hospital, department, memo, status);
         visit.update(date, trim(hospital), trim(department), memo, status);
+        visits.flush();
         return visit;
     }
 
@@ -80,6 +86,7 @@ public class VisitCommandService {
             LocalDate date, String hospital, String department, String memo, VisitStatus status) {
         if (date == null
                 || status == null
+                || status == VisitStatus.CANCELED
                 || (hospital != null && hospital.length() > 200)
                 || (department != null && department.length() > 100)
                 || (memo != null && memo.length() > 2000))

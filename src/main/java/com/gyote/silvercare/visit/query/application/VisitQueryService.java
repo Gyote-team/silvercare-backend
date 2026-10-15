@@ -117,14 +117,14 @@ public class VisitQueryService {
         Map<UUID, List<UUID>> documents =
                 references(
                         "select visit_id,id from documents where status <> 'DELETED' and visit_id"
-                            + " in ("
+                                + " in ("
                                 + parameters
                                 + ") order by id",
                         ids);
         Map<UUID, List<UUID>> records =
                 references(
                         "select visit_id,id from health_records where deleted_at is null and"
-                            + " visit_id in ("
+                                + " visit_id in ("
                                 + parameters
                                 + ") order by id",
                         ids);
@@ -142,7 +142,8 @@ public class VisitQueryService {
                                         documents.getOrDefault(v.getId(), List.of()),
                                         records.getOrDefault(v.getId(), List.of()),
                                         v.getCreatedAt(),
-                                        v.getUpdatedAt()))
+                                        v.getUpdatedAt(),
+                                        v.getVersion()))
                 .toList();
     }
 
