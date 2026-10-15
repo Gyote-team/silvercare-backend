@@ -66,7 +66,7 @@ class ResultDocumentEvidenceRepositoryTest {
     }
 
     @Test
-    void usesOnlyLatestAnalysisAndExcludesLatestFailure() {
+    void usesLatestSuccessfulAnalysisAfterRetryFailure() {
         UUID reanalyzed = document(Instant.parse("2026-10-01T00:00:00Z"));
         UUID failed = document(Instant.parse("2026-10-02T00:00:00Z"));
         items(analysis(reanalyzed, "SUCCEEDED", Instant.parse("2026-10-01T01:00:00Z")), 7);
@@ -76,9 +76,17 @@ class ResultDocumentEvidenceRepositoryTest {
 
         var rows = evidence.findEvidence(patientId, List.of(reanalyzed, failed));
 
-        assertThat(rows).hasSize(3);
+        assertThat(rows).hasSize(7);
         assertThat(count(rows, reanalyzed)).isEqualTo(3);
-        assertThat(count(rows, failed)).isZero();
+        assertThat(count(rows, failed)).isEqualTo(4);
+    }
+
+    @Test
+    void returnsNoEvidenceWhenDocumentHasNeverSucceeded() {
+        UUID failed = document(Instant.parse("2026-10-02T00:00:00Z"));
+        analysis(failed, "FAILED", Instant.parse("2026-10-02T02:00:00Z"));
+
+        assertThat(evidence.findEvidence(patientId, List.of(failed))).isEmpty();
     }
 
     private long count(List<ResultDocumentEvidenceRepository.EvidenceRow> rows, UUID documentId) {

@@ -10,7 +10,7 @@ import java.util.UUID;
 
 public interface ResultDocumentEvidenceRepository extends Repository<AiResultDocument, UUID> {
 
-    /** 선택한 문서에서 분석이 완료된 최신 원문 근거를 조회한다. */
+    /** 선택한 문서에서 가장 최근에 성공한 분석의 원문 근거를 조회한다. */
     @Query(value = """
             WITH ranked_evidence AS (
                 SELECT CAST(ei.id AS VARCHAR) AS "itemId", CAST(d.id AS VARCHAR) AS "documentId",
@@ -23,6 +23,7 @@ public interface ResultDocumentEvidenceRepository extends Repository<AiResultDoc
                     SELECT latest.id
                     FROM document_analyses latest
                     WHERE latest.document_id = d.id
+                      AND latest.status = 'SUCCEEDED'
                     ORDER BY latest.created_at DESC, latest.id DESC
                     LIMIT 1
                 )
@@ -31,7 +32,6 @@ public interface ResultDocumentEvidenceRepository extends Repository<AiResultDoc
                 WHERE d.patient_id = :patientId
                   AND d.id IN (:documentIds)
                   AND d.deleted_at IS NULL
-                  AND da.status = 'SUCCEEDED'
             )
             SELECT "itemId", "documentId", "pageNo", "label", "rawValue", "unit",
                    "referenceRange", "sourceText"
