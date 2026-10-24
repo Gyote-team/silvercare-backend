@@ -4,9 +4,13 @@ import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.UserStatus;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
+import com.gyote.silvercare.patient.domain.repository.PatientRepository;
+import com.gyote.silvercare.global.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -17,9 +21,12 @@ class UserAccountServiceTest {
     @Autowired
     private UserRepository users;
 
+    @Autowired
+    private PatientRepository patients;
+
     @Test
     void firstLoginCreatesAccountWithoutRoleEmailOrPassword() {
-        UserAccountService accounts = new UserAccountService(users);
+        UserAccountService accounts = new UserAccountService(users, patients);
 
         User created = accounts.loginOrRegister("kakao-soonja", "김순자");
 
@@ -35,7 +42,7 @@ class UserAccountServiceTest {
 
     @Test
     void secondLoginKeepsOneRowAndUpdatesName() {
-        UserAccountService accounts = new UserAccountService(users);
+        UserAccountService accounts = new UserAccountService(users, patients);
         accounts.loginOrRegister("kakao-minji", "민지");
 
         User again = accounts.loginOrRegister("kakao-minji", "김민지");
@@ -47,29 +54,29 @@ class UserAccountServiceTest {
 
     @Test
     void chooseRoleOnceAsPatient() {
-        UserAccountService accounts = new UserAccountService(users);
+        UserAccountService accounts = new UserAccountService(users, patients);
         accounts.loginOrRegister("kakao-soonja", "김순자");
 
         User chosen = accounts.chooseRole("kakao-soonja", UserRole.PATIENT);
 
         assertThat(chosen.getRole()).isEqualTo(UserRole.PATIENT);
-        assertThat(chosen.getInviteCode()).isNotBlank();
-        assertThat(chosen.getInviteCode()).hasSize(6);
+        assertThat(accounts.patientInviteCode(chosen)).isNotBlank();
+        assertThat(accounts.patientInviteCode(chosen)).hasSize(6);
         assertThatThrownBy(() -> accounts.chooseRole("kakao-soonja", UserRole.CAREGIVER))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
     void blankKakaoIdIsRejected() {
-        UserAccountService accounts = new UserAccountService(users);
+        UserAccountService accounts = new UserAccountService(users, patients);
 
         assertThatThrownBy(() -> accounts.loginOrRegister("  ", "민지"))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
     void demoCaregiverIsCreatedOnce() {
-        UserAccountService accounts = new UserAccountService(users);
+        UserAccountService accounts = new UserAccountService(users, patients);
 
         User first = accounts.ensureDemoUser(UserRole.CAREGIVER);
         User again = accounts.ensureDemoUser(UserRole.CAREGIVER);
@@ -79,5 +86,38 @@ class UserAccountServiceTest {
         assertThat(first.getRole()).isEqualTo(UserRole.CAREGIVER);
         assertThat(again.getId()).isEqualTo(first.getId());
         assertThat(users.count()).isEqualTo(1);
+    }
+
+    @Test
+    void withdrawnKakaoUserRegistersAgainAsNewAccount() {
+        UserAccountService accounts = new UserAccountService(users, patients);
+        User old = accounts.chooseRole(accounts.loginOrRegister("kakao-soonja", "김순자").getKakaoId(), UserRole.PATIENT);
+        String oldInviteCode = accounts.patientInviteCode(old);
+        old.withdraw(Instant.now());
+
+        User rejoined = accounts.loginOrRegister("kakao-soonja", "김순자");
+
+        assertThat(rejoined.getId()).isNotEqualTo(old.getId());
+        assertThat(rejoined.getRole()).isEqualTo(UserRole.PENDING);
+        assertThat(rejoined.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(old.getStatus()).isEqualTo(UserStatus.WITHDRAWN);
+        assertThat(old.getKakaoId()).isNull();
+        assertThat(users.count()).isEqualTo(2);
+
+        User rejoinedPatient = accounts.chooseRole("kakao-soonja", UserRole.PATIENT);
+        assertThat(accounts.patientInviteCode(rejoinedPatient)).isNotEqualTo(oldInviteCode);
+    }
+
+    @Test
+    void withdrawnDemoUserIsRecreatedAsNewAccount() {
+        UserAccountService accounts = new UserAccountService(users, patients);
+        User demo = accounts.ensureDemoUser(UserRole.PATIENT);
+        demo.withdraw(Instant.now());
+
+        User recreated = accounts.ensureDemoUser(UserRole.PATIENT);
+
+        assertThat(recreated.getId()).isNotEqualTo(demo.getId());
+        assertThat(recreated.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(accounts.patientInviteCode(recreated)).isNotBlank();
     }
 }

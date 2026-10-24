@@ -4,6 +4,10 @@ import com.gyote.silvercare.user.domain.User;
 import com.gyote.silvercare.user.domain.UserRole;
 import com.gyote.silvercare.user.domain.UserStatus;
 import com.gyote.silvercare.user.domain.repository.UserRepository;
+import com.gyote.silvercare.patient.domain.Patient;
+import com.gyote.silvercare.patient.domain.repository.PatientRepository;
+import com.gyote.silvercare.global.exception.BusinessException;
+import com.gyote.silvercare.user.error.UserErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,15 +20,17 @@ public class UserAccountService {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final UserRepository users;
+    private final PatientRepository patients;
 
-    public UserAccountService(UserRepository users) {
+    public UserAccountService(UserRepository users, PatientRepository patients) {
         this.users = users;
+        this.patients = patients;
     }
 
     @Transactional
     public User loginOrRegister(String kakaoId, String nickname) {
         if (kakaoId == null || kakaoId.isBlank()) {
-            throw new IllegalArgumentException("kakao_id가 없습니다");
+            throw new BusinessException(UserErrorCode.KAKAO_ID_REQUIRED);
         }
         String name = (nickname == null || nickname.isBlank()) ? "이용자" : nickname.trim();
         return users.findByKakaoId(kakaoId).map(existing -> {
@@ -43,30 +49,41 @@ public class UserAccountService {
     @Transactional
     public User chooseRole(String kakaoId, UserRole role) {
         if (role != UserRole.PATIENT && role != UserRole.CAREGIVER) {
-            throw new IllegalArgumentException("역할은 개인 또는 보호자만 고를 수 있습니다");
+            throw new BusinessException(UserErrorCode.INVALID_ROLE);
         }
         User user = users.findByKakaoId(kakaoId)
-                .orElseThrow(() -> new IllegalArgumentException("카카오 계정이 없습니다"));
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
         if (user.getRole() != UserRole.PENDING) {
-            throw new IllegalStateException("역할은 한 번만 고를 수 있습니다");
+            throw new BusinessException(UserErrorCode.ROLE_ALREADY_SELECTED);
         }
         user.setRole(role);
         if (role == UserRole.PATIENT) {
-            ensureInviteCode(user);
+            ensurePatientProfile(user);
         }
         return user;
     }
 
     @Transactional
-    public User ensureInviteCode(User user) {
+    public Patient ensurePatientProfile(User user) {
         if (user.getRole() != UserRole.PATIENT) {
-            return user;
+            throw new BusinessException(UserErrorCode.INVALID_ROLE);
         }
-        if (user.getInviteCode() != null && !user.getInviteCode().isBlank()) {
-            return user;
+        return patients.findByUserId(user.getId()).orElseGet(() -> {
+            Patient patient = new Patient();
+            patient.setUserId(user.getId());
+            patient.setInviteCode(newInviteCode());
+            return patients.save(patient);
+        });
+    }
+
+    @Transactional(readOnly = true)
+    public String patientInviteCode(User user) {
+        if (user.getRole() != UserRole.PATIENT) {
+            return null;
         }
-        user.setInviteCode(newInviteCode());
-        return user;
+        return patients.findByUserId(user.getId())
+                .map(Patient::getInviteCode)
+                .orElse(null);
     }
 
     private String newInviteCode() {
@@ -76,19 +93,19 @@ public class UserAccountService {
                 code.append(INVITE_ALPHABET.charAt(RANDOM.nextInt(INVITE_ALPHABET.length())));
             }
             String candidate = code.toString();
-            if (users.findByInviteCode(candidate).isEmpty()) {
+            if (patients.findByInviteCode(candidate).isEmpty()) {
                 return candidate;
             }
         }
-        throw new IllegalStateException("초대 코드를 만들 수 없습니다");
+        throw new BusinessException(UserErrorCode.INVITE_CODE_GENERATION_FAILED);
     }
 
     @Transactional
     public User ensureDemoUser(UserRole role) {
         if (role != UserRole.PATIENT && role != UserRole.CAREGIVER) {
-            throw new IllegalArgumentException("역할은 개인 또는 보호자만 고를 수 있습니다");
+            throw new BusinessException(UserErrorCode.INVALID_ROLE);
         }
-        String kakaoId = role == UserRole.CAREGIVER ? "demo-caregiver" : "demo-patient";
+        String kakaoId = User.DEMO_KAKAO_ID_PREFIX + (role == UserRole.CAREGIVER ? "caregiver" : "patient");
         String name = role == UserRole.CAREGIVER ? "김민지" : "김순자";
         User user = users.findByKakaoId(kakaoId).orElseGet(() -> {
             User created = new User();
@@ -103,8 +120,31 @@ public class UserAccountService {
             user.setRole(role);
         }
         if (role == UserRole.PATIENT) {
-            ensureInviteCode(user);
+            ensurePatientProfile(user);
         }
+        return user;
+    }
+
+    /** 이름으로 선택한 시연 계정을 준비한다. 기존 두 계정의 데이터는 유지한다. */
+    @Transactional
+    public User ensureNamedDemoUser(String account) {
+        if ("MINJI".equals(account)) return ensureDemoUser(UserRole.CAREGIVER);
+        if ("SOONJA".equals(account)) return ensureDemoUser(UserRole.PATIENT);
+        String name = switch (account) {
+            case "JIHUN" -> "박지훈";
+            case "SEOYEON" -> "이서연";
+            default -> throw new BusinessException(UserErrorCode.INVALID_ROLE);
+        };
+        String key = User.DEMO_KAKAO_ID_PREFIX + account.toLowerCase(java.util.Locale.ROOT);
+        User user = users.findByKakaoId(key).orElseGet(() -> {
+            User created = new User();
+            created.setKakaoId(key);
+            created.setName(name);
+            created.setRole(UserRole.PATIENT);
+            created.setStatus(UserStatus.ACTIVE);
+            return users.save(created);
+        });
+        ensurePatientProfile(user);
         return user;
     }
 }
