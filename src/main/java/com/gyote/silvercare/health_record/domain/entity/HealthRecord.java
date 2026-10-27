@@ -19,8 +19,7 @@ import java.util.UUID;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class HealthRecord {
-    @Id
-    private UUID id;
+    @Id private UUID id;
 
     @Column(name = "patient_id", nullable = false)
     private UUID patientId;
@@ -67,6 +66,11 @@ public class HealthRecord {
         record.proxyWritten = proxy;
         record.recordedAt = record.createdAt = record.updatedAt = Instant.now();
         return record;
+    }
+
+    /** 사용자 확정한 음성 기록을 STT 입력으로 표시한다. */
+    public void markSpeechInput() {
+        this.inputType = "STT";
     }
 
     /** 본문과 연결 방문을 수정한다. */

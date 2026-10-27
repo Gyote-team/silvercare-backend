@@ -1,0 +1,43 @@
+# 음성 건강기록·진료실 녹음 (#12, #17)
+
+개인은 보호자 없이 본인 음성을, ACTIVE 보호자는 지정한 개인의 음성을 관리한다. 방문 녹음은 같은 개인의 취소되지 않은 방문에만 업로드·확정할 수 있다. 음성 변환 결과는 초안이며, 사용자 확정 전에는 건강기록을 만들지 않는다.
+
+## HTTP 계약
+
+- `POST /api/health-records/voice`: multipart `audio`, `consent=true`, `patientId?`(보호자 필수), `visitId?`
+- `POST /api/visits/{visitId}/recordings`: multipart `audio`, `consent=true`, `patientId?`(보호자 필수). 진료실 녹음 전 참석자 고지·동의를 화면에서 확인한다.
+- 두 업로드는 `Idempotency-Key`(영문·숫자·밑줄·하이픈 8~100자)가 필수이며, 202와 Location·transcriptionId·statusUrl을 반환한다. 같은 사용자·키·파일·대상·방문·용도 재전송은 같은 작업을 반환하고 내용이 바뀌면 409 VOICE_003이다.
+- `GET /api/transcriptions/{id}`: 현재 권한으로 상태·초안·버전·확정 기록 참조 조회. 저장 키나 원본 URL은 반환하지 않는다.
+- `GET /api/transcriptions?patientId?`: 대상의 최근 건강 음성 20건.
+- `GET /api/visits/{visitId}/recordings`: 방문에 연결된 최근 음성 20건. 취소된 방문도 기존 자료 조회는 유지한다.
+- `POST /api/transcriptions/{id}/confirm`: `{ "body": "사용자 확인 내용", "version": 2 }`. DRAFT_READY만 확정한다. 빈 본문·2,000자 초과는 400, 이전 버전은 409 GLOBAL_004이다.
+- `DELETE /api/transcriptions/{id}`: 확정 전 작업을 CANCELED로 전환하고 초안을 비운다. 재취소는 204, 확정 후 취소는 409. 최종 기록은 기존 건강기록 API에서 수정·삭제한다.
+- `POST /api/transcriptions/{id}/retry`: FAILED만 원본으로 재시도한다.
+
+확정은 기존 건강기록 생성 규칙과 알림을 재사용하고 inputType=STT로 저장한다. 진료실 녹음은 visitId를 유지한 건강기록으로 확정하여 방문의 연결 건강기록에서도 조회된다. 원래 업로더는 음성 작업에, 최종 확인·확정한 사용자는 건강기록 작성자에 보존한다. 같은 내용의 확정 재요청은 같은 recordId를 반환하며 다른 내용의 재확정은 거절한다.
+
+## 파일·상태 규칙
+
+- 원본은 최대 20MiB, WAV·MP3·M4A·WebM·OGG만 지원한다. 확장자·클라이언트 MIME 대신 파일 시그니처로 저장 형식을 결정하며 서버 생성 경로에 저장한다. 실제 디코딩 실패는 AI 작업의 AUDIO_INVALID로 반환한다.
+- `UPLOADED → PROCESSING → DRAFT_READY → CONFIRMED`, 실패는 FAILED, 사용자 취소는 CANCELED이다.
+- AI 초안은 최대 20,000자를 보존한다. 긴 초안을 자동 절단하지 않으며 사용자가 최종 기록을 2,000자 이내로 정리한 뒤 저장한다.
+- 작업 선점·완료는 version을 증가시킨다. AI는 현재 PROCESSING 상태와 lease가 일치할 때만 결과를 저장한다. 취소·재시도 뒤 도착한 결과는 폐기한다.
+- 작업자가 중단되면 10분 만료 lease를 다른 실행이 회수한다. 중단 복구 3회 초과는 FAILED/WORKER_TIMEOUT으로 끝내며 명시적으로 재시도할 수 있다.
+- 파일은 외부 공개 경로로 제공하지 않는다. 현재 저장소는 공유 로컬 폴더이며 업로드 DB 롤백 시 신규 원본을 정리한다. 운영 원본 보관 기간·정리 정책은 별도 결정이 필요하다.
+
+## 실행 순서
+
+1. Spring의 새 `V202610271200__voice_transcriptions.sql`을 적용한다. 기존 마이그레이션은 수정하지 않고 out-of-order를 사용하지 않는다.
+2. AI `.env`에 같은 DB의 DATABASE_URL, 같은 업로드 폴더의 STORAGE_LOCAL_ROOT, 기존 필수 AI_INTERNAL_TOKEN, STT_API_KEY를 설정한다. STT_API_KEY가 없으면 OPENAI_API_KEY를 사용한다. LLM_API_KEY는 STT 키로 재사용하지 않는다.
+3. AI 저장소에서 `python -m app.workers.voice_worker`를 별도 실행한다. 공급자 키가 없으면 시작 시 실패한다. STT_MODEL·STT_BASE_URL은 환경 설정으로 교체한다.
+4. 작업자가 준비되면 Spring의 VOICE_ENABLED=true를 설정한다. 기본 false이며 비활성 상태의 신규 업로드는 503 VOICE_006이다.
+5. 프론트 `/records`의 음성 건강기록, `/visits/{visitId}`의 진료실 음성 기록을 사용한다. 변환 중 화면을 닫아도 서버 작업은 유지하며 최근 음성에서 다시 확인한다.
+
+## 검증 범위 (2026-10-27)
+
+- Spring 전체 테스트 246개 통과. 음성 API 8개는 권한·재전송·동시 상태·취소·방문 연결·파일 제한·확정 검증을 포함하며 비활성 시 미저장과 multipart 제한 오류도 검증한다.
+- 전용 PostgreSQL DB에서 전체 15개 마이그레이션 적용, 실제 HTTP와 AI 큐 연결 검증 통과. 동시에 같은 초안을 확정해도 건강기록이 한 건만 생성된다.
+- AI PostgreSQL 큐 테스트는 `VOICE_TEST_DATABASE_URL`을 `silvercare_voice_verify_` 접두어의 전용 DB로 설정해 실행한다. 임시 스키마만 생성·정리한다.
+- 프론트는 동의·초안 수정·명시적 저장·긴 초안 미절단·동일 키 재전송·취소 방문 제한을 검증한다.
+- 브라우저에서 테스트 파일 업로드 → 초안 표시 → 직접 내용 수정 → 건강기록 저장, 방문 녹음 목록과 연결 기록 표시를 확인했다. 마이크 미지원 안내와 화면 종료 시 마이크 트랙 정리는 모의 브라우저 테스트로 확인했다.
+- 로컬 검증 당시 실제 STT 키는 없었다. DB/HTTP 통합 검증은 STT 공급자만 명확한 테스트 대역을 사용했으며 실제 음성 인식 정확도와 브라우저 마이크 권한은 검증 완료로 간주하지 않는다.

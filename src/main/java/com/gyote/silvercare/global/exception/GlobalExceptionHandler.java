@@ -1,6 +1,9 @@
 package com.gyote.silvercare.global.exception;
 
 import com.gyote.silvercare.medical_document.error.MedicalDocumentErrorCode;
+import com.gyote.silvercare.voice_recording.error.VoiceRecordingErrorCode;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,8 +47,12 @@ public class GlobalExceptionHandler {
     /** multipart 크기 한도를 넘은 요청을 413 FILE_TOO_LARGE 응답으로 바꿔 반환합니다. */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponse> handleFileTooLarge(
-            MaxUploadSizeExceededException exception) {
-        ErrorCode errorCode = MedicalDocumentErrorCode.FILE_TOO_LARGE;
+            MaxUploadSizeExceededException exception, HttpServletRequest request) {
+        boolean voice =
+                request.getRequestURI()
+                        .matches("/api/(health-records/voice|visits/[^/]+/recordings)");
+        ErrorCode errorCode =
+                voice ? VoiceRecordingErrorCode.TOO_LARGE : MedicalDocumentErrorCode.FILE_TOO_LARGE;
         return ResponseEntity.status(errorCode.status()).body(ErrorResponse.of(errorCode));
     }
 

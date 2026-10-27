@@ -61,6 +61,8 @@ logging:
     org.springframework.security.oauth2: INFO
 
 silvercare:
+  voice:
+    enabled: ${VOICE_ENABLED:false}
   demo-login: ${DEMO_LOGIN:false}
   frontend-origin: ${FRONTEND_ORIGIN:http://localhost:3000}
   document:
