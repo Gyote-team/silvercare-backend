@@ -18,7 +18,7 @@ src/main/java/com/gyote/silvercare/
 ├─ action_item/                      # 할 일 후보 승인·거절 (구조 준비)
 ├─ schedule/                         # 일정·복약 알림 (구조 준비)
 ├─ timeline/                         # 통합 타임라인 조회 (구조 준비)
-└─ voice_recording/                  # 건강기록·진료실 녹음 메타데이터 (구조 준비)
+└─ voice_recording/                  # 음성 업로드·STT 작업·초안 확정·진료실 녹음
 ```
 
 ## 파일명·클래스명 명명 규칙

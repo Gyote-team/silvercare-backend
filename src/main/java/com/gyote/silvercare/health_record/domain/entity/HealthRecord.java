@@ -69,6 +69,11 @@ public class HealthRecord {
         return record;
     }
 
+    /** 사용자 확정한 음성 기록을 STT 입력으로 표시한다. */
+    public void markSpeechInput() {
+        this.inputType = "STT";
+    }
+
     /** 본문과 연결 방문을 수정한다. */
     public void update(String body, UUID visitId) {
         this.content = body;

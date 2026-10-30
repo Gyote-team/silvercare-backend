@@ -58,7 +58,10 @@ public class DocumentAnalysisConfig {
 
     // HttpURLConnection 기반 factory는 POST의 401 응답을 연결 오류로 던질 수 있어 JDK HttpClient를 씁니다.
     private static JdkClientHttpRequestFactory requestFactory(Duration connectTimeout, Duration readTimeout) {
-        HttpClient httpClient = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
+        // Uvicorn의 HTTP/1.1 서버에 h2c 업그레이드를 보내지 않는다.
+        HttpClient httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .connectTimeout(connectTimeout).build();
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
         factory.setReadTimeout(readTimeout);
         return factory;
