@@ -20,6 +20,9 @@ import jakarta.persistence.EntityManager;
 
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.file.*;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Stream;
 
 /** 실제 인증·권한·초안 확정·중복 및 취소 경쟁의 HTTP 계약을 검증한다. */
 @SpringBootTest(properties = "silvercare.voice.enabled=true")
@@ -75,6 +79,109 @@ class VoiceApiIntegrationTest {
         patient = patients.findByUserId(personal.getId()).orElseThrow().getId();
         token = jwt.create(personal);
         caregiverToken = jwt.create(caregiver);
+    }
+
+    /** 재생용 파일이 아닌 헤더 fixture로 서버 판정·저장 메타데이터를 검증한다. */
+    static Stream<Arguments> supportedAudioHeaders() {
+        byte[] tagged = new byte[32];
+        System.arraycopy(new byte[] {'I', 'D', '3', 4, 0, 0, 0, 0, 0, 4}, 0, tagged, 0, 10);
+        System.arraycopy(new byte[] {(byte) 0xff, (byte) 0xfb, (byte) 0x90, 0}, 0, tagged, 14, 4);
+        return Stream.concat(Stream.of(
+                Arguments.of(audioHeader(0x1a, 0x45, 0xdf, 0xa3), "webm", "audio/webm"),
+                Arguments.of(audioHeader('O', 'g', 'g', 'S'), "ogg", "audio/ogg"),
+                Arguments.of(audioHeader(0xff, 0xfb, 0x90, 0), "mp3", "audio/mpeg"),
+                Arguments.of(audioHeader(0xff, 0xf3, 0x80, 0), "mp3", "audio/mpeg"),
+                Arguments.of(tagged, "mp3", "audio/mpeg")),
+                Stream.of("M4A ", "isom", "mp42", "mp41", "iso6", "3gp4", "qt  ", "zzzz")
+                        .map(brand -> Arguments.of(mp4(brand), "m4a", "audio/mp4")));
+    }
+
+    static byte[] audioHeader(int... prefix) {
+        byte[] bytes = new byte[32];
+        for (int i = 0; i < prefix.length; i++) bytes[i] = (byte) prefix[i];
+        return bytes;
+    }
+
+    static byte[] mp4(String brand) {
+        byte[] bytes = new byte[32];
+        java.nio.ByteBuffer.wrap(bytes).putInt(24);
+        System.arraycopy("ftyp".getBytes(java.nio.charset.StandardCharsets.US_ASCII), 0, bytes, 4, 4);
+        System.arraycopy(brand.getBytes(java.nio.charset.StandardCharsets.US_ASCII), 0, bytes, 8, 4);
+        return bytes;
+    }
+
+    @ParameterizedTest
+    @MethodSource("supportedAudioHeaders")
+    void contentSignatureDeterminesStoredExtensionAndMime(byte[] bytes, String extension, String mime)
+            throws Exception {
+        String result = mvc.perform(multipart("/api/health-records/voice")
+                        .file(audio(bytes)).param("consent", "true")
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();
+        UUID id = UUID.fromString(json.readTree(result).get("transcriptionId").asText());
+        var row = jobs.findById(id).orElseThrow();
+        assertThat(row.getContentType()).isEqualTo(mime);
+        assertThat(row.getStorageKey()).endsWith("." + extension);
+        assertThat(Files.readAllBytes(storage.resolve(row.getStorageKey()))).isEqualTo(bytes);
+        assertThat(row.getConsentAt()).isNotNull();
+    }
+
+    static Stream<Arguments> unsupportedAudioHeaders() {
+        byte[] truncatedTag = audioHeader('I', 'D', '3', 4);
+        truncatedTag[9] = 127;
+        byte[] shortBox = mp4("M4A ");
+        java.nio.ByteBuffer.wrap(shortBox).putInt(12);
+        byte[] truncatedBox = mp4("mp41");
+        java.nio.ByteBuffer.wrap(truncatedBox).putInt(100);
+        return Stream.of(
+                Arguments.of("AAC ADTS MPEG-4", audioHeader(0xff, 0xf1, 0x50, 0x80)),
+                Arguments.of("AAC ADTS MPEG-2", audioHeader(0xff, 0xf9, 0x50, 0x80)),
+                Arguments.of("reserved MPEG version", audioHeader(0xff, 0xeb, 0x90, 0)),
+                Arguments.of("reserved bitrate", audioHeader(0xff, 0xfb, 0xf0, 0)),
+                Arguments.of("reserved sample rate", audioHeader(0xff, 0xfb, 0x9c, 0)),
+                Arguments.of("ID3 without MPEG frame", audioHeader('I', 'D', '3', 4)),
+                Arguments.of("truncated ID3", truncatedTag),
+                Arguments.of("invalid ftyp box size", shortBox),
+                Arguments.of("truncated ftyp box", truncatedBox));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("unsupportedAudioHeaders")
+    void unsupportedHeaderDoesNotCreateJobOrFile(String name, byte[] bytes) throws Exception {
+        long before = jobs.count();
+        long filesBefore = storedFiles();
+        mvc.perform(multipart("/api/health-records/voice").file(audio(bytes))
+                        .param("consent", "true").header("Idempotency-Key", UUID.randomUUID().toString())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.code").value("VOICE_005"));
+        assertThat(jobs.count()).isEqualTo(before);
+        assertThat(storedFiles()).isEqualTo(filesBefore);
+    }
+
+    @Test
+    void explicitConsentFalseRejectsBothPurposesWithoutSaving() throws Exception {
+        UUID visit = visit();
+        long before = jobs.count();
+        long recordsBefore = records.count();
+        long filesBefore = storedFiles();
+        for (String path : List.of("/api/health-records/voice", "/api/visits/" + visit + "/recordings")) {
+            mvc.perform(multipart(path).file(audio(wav())).param("consent", "false")
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("GLOBAL_002"));
+        }
+        assertThat(jobs.count()).isEqualTo(before);
+        assertThat(records.count()).isEqualTo(recordsBefore);
+        assertThat(storedFiles()).isEqualTo(filesBefore);
+    }
+
+    long storedFiles() throws Exception {
+        try (var paths = Files.walk(storage)) {
+            return paths.filter(Files::isRegularFile).count();
+        }
     }
 
     byte[] wav() {

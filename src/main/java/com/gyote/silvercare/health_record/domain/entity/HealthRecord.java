@@ -19,7 +19,8 @@ import java.util.UUID;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class HealthRecord {
-    @Id private UUID id;
+    @Id
+    private UUID id;
 
     @Column(name = "patient_id", nullable = false)
     private UUID patientId;

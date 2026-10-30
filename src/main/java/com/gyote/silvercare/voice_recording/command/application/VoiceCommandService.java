@@ -191,12 +191,35 @@ public class VoiceCommandService {
                 && (b[2] & 255) == 0xdf
                 && (b[3] & 255) == 0xa3) return "webm";
         if (ascii(b, 0, 4).equals("OggS")) return "ogg";
-        if (ascii(b, 0, 3).equals("ID3") || ((b[0] & 255) == 255 && (b[1] & 0xe0) == 0xe0))
-            return "mp3";
-        if (ascii(b, 4, 4).equals("ftyp")
-                && (ascii(b, 8, 4).equals("M4A ")
-                        || ascii(b, 8, 4).equals("isom")
-                        || ascii(b, 8, 4).equals("mp42"))) return "m4a";
+        if (mpegLayerThree(b)) return "mp3";
+        // ftyp 브랜드는 기기마다 다르므로 컨테이너 구조만 확인한다.
+        // 실제 오디오 포함 여부·디코딩 가능 여부는 STT 공급자가 검증한다.
+        long boxSize = Integer.toUnsignedLong(java.nio.ByteBuffer.wrap(b, 0, 4).getInt());
+        if (ascii(b, 4, 4).equals("ftyp") && boxSize >= 16 && boxSize <= b.length
+                && (boxSize - 16) % 4 == 0) return "m4a";
         throw new BusinessException(VoiceRecordingErrorCode.UNSUPPORTED);
+    }
+
+    /** AAC ADTS의 동기 비트와 구분하고 ID3 태그 뒤의 실제 Layer III 헤더를 확인한다. */
+    private static boolean mpegLayerThree(byte[] b) {
+        int offset = 0;
+        if (ascii(b, 0, 3).equals("ID3")) {
+            int version = b[3] & 255;
+            if (version < 2 || version > 4) return false;
+            int size = 0;
+            for (int i = 6; i < 10; i++) {
+                if ((b[i] & 0x80) != 0) return false;
+                size = (size << 7) | (b[i] & 0x7f);
+            }
+            offset = 10 + size + (version == 4 && (b[5] & 0x10) != 0 ? 10 : 0);
+        }
+        if (offset > b.length - 4) return false;
+        int second = b[offset + 1] & 255;
+        int third = b[offset + 2] & 255;
+        return (b[offset] & 255) == 255 && (second & 0xe0) == 0xe0
+                && (second & 0x18) != 0x08 // reserved MPEG version
+                && (second & 0x06) == 0x02 // Layer III; ADTS의 layer=00은 제외
+                && (third & 0xf0) != 0xf0 // reserved bitrate
+                && (third & 0x0c) != 0x0c; // reserved sample rate
     }
 }
