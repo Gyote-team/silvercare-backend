@@ -20,9 +20,9 @@
 
 - 원본은 최대 20MiB, WAV·MP3·M4A·WebM·OGG만 지원한다. 확장자·클라이언트 MIME 대신 파일 시그니처로 저장 형식을 결정하며 서버 생성 경로에 저장한다. MP3는 MPEG Layer III 헤더(있는 경우 ID3 태그 뒤)를 확인하여 AAC ADTS를 제외한다. M4A는 유효한 길이의 ftyp 박스를 확인하고 특정 기기 브랜드로 제한하지 않는다. ftyp만으로 오디오 트랙이나 재생 가능성을 보장하지 않으며 실제 디코딩 실패는 AI 작업의 AUDIO_INVALID로 반환한다.
 - `UPLOADED → PROCESSING → DRAFT_READY → CONFIRMED`, 실패는 FAILED, 사용자 취소는 CANCELED이다.
-- AI 초안은 최대 20,000자를 보존한다. 긴 초안을 자동 절단하지 않으며 사용자가 최종 기록을 2,000자 이내로 정리한 뒤 저장한다.
+- AI 초안은 STT_MAX_TRANSCRIPT_CHARS(기본 100,000자)의 크기 보호 한도를 적용한다. 긴 초안을 자동 절단하지 않으며 사용자가 최종 기록을 2,000자 이내로 정리한 뒤 저장한다.
 - 작업 선점·완료는 version을 증가시킨다. AI는 현재 PROCESSING 상태와 lease가 일치할 때만 결과를 저장한다. 취소·재시도 뒤 도착한 결과는 폐기한다.
-- 작업자가 중단되면 10분 만료 lease를 다른 실행이 회수한다. 중단 복구 3회 초과는 FAILED/WORKER_TIMEOUT으로 끝내며 명시적으로 재시도할 수 있다.
+- 작업자가 중단되면 STT_LEASE_SECONDS(기본 600초)의 만료 lease를 다른 실행이 회수한다. 중단 복구 3회 초과는 FAILED/WORKER_TIMEOUT으로 끝내며 명시적으로 재시도할 수 있다.
 - 파일은 외부 공개 경로로 제공하지 않는다. 현재 저장소는 공유 로컬 폴더이며 업로드 DB 롤백 시 신규 원본을 정리한다. 운영 원본 보관 기간·정리 정책은 별도 결정이 필요하다.
 
 ### 현재 운영 한계
@@ -34,7 +34,7 @@
 ## 실행 순서
 
 1. Spring의 새 `V202610271200__voice_transcriptions.sql`을 적용한다. 기존 마이그레이션은 수정하지 않고 out-of-order를 사용하지 않는다.
-2. AI `.env`에 같은 DB의 DATABASE_URL, 같은 업로드 폴더의 STORAGE_LOCAL_ROOT, 기존 필수 AI_INTERNAL_TOKEN, STT_API_KEY를 설정한다. STT_API_KEY가 없으면 OPENAI_API_KEY를 사용한다. LLM_API_KEY는 STT 키로 재사용하지 않는다.
+2. AI `.env`에 같은 DB의 DATABASE_URL, 같은 업로드 폴더의 STORAGE_LOCAL_ROOT, 기존 필수 AI_INTERNAL_TOKEN, STT_API_KEY를 설정한다. STT_API_KEY가 없으면 음성 작업자 기동을 거절한다. 문서용 OPENAI_API_KEY·LLM_API_KEY를 STT 키로 재사용하지 않는다.
 3. AI 저장소에서 `python -m app.workers.voice_worker`를 별도 실행한다. 공급자 키가 없으면 시작 시 실패한다. STT_MODEL·STT_BASE_URL은 환경 설정으로 교체한다.
 4. 작업자가 준비되면 Spring의 VOICE_ENABLED=true를 설정한다. 기본 false이며 비활성 상태의 신규 업로드는 503 VOICE_006이다.
 5. 프론트 `/records`의 음성 건강기록, `/visits/{visitId}`의 진료실 음성 기록을 사용한다. 변환 중 화면을 닫아도 서버 작업은 유지하며 최근 음성에서 다시 확인한다.
