@@ -8,6 +8,11 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.web.client.RestClient;
+import com.sun.net.httpserver.HttpServer;
+import com.gyote.silvercare.medical_document.domain.DocumentAnalysisRequest;
+import java.net.InetSocketAddress;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -45,5 +50,34 @@ class DocumentAnalysisConfigTest {
         runner.withPropertyValues("silvercare.ai.base-url=http://ai.test")
                 .run(context -> assertThat(context.getStartupFailure())
                         .rootCause().hasMessageContaining("silvercare.ai.internal-token"));
+    }
+
+    @Test
+    void configuredClientPostsWithoutHttp2Upgrade() throws Exception {
+        AtomicReference<String> upgrade = new AtomicReference<>();
+        AtomicReference<String> body = new AtomicReference<>();
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/internal/documents/", exchange -> {
+            upgrade.set(exchange.getRequestHeaders().getFirst("Upgrade"));
+            body.set(new String(exchange.getRequestBody().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+            exchange.sendResponseHeaders(202, -1);
+            exchange.close();
+        });
+        server.start();
+        try {
+            runner.withPropertyValues(
+                    "silvercare.ai.base-url=http://127.0.0.1:" + server.getAddress().getPort(),
+                    "silvercare.ai.internal-token=test-token")
+                    .run(context -> {
+                        UUID id = UUID.randomUUID();
+                        var result = context.getBean(DocumentAnalysisPort.class).requestAnalysis(
+                                new DocumentAnalysisRequest(id, "documents/test.pdf", "application/pdf", "test-request"));
+                        assertThat(result.isSuccess()).isTrue();
+                        assertThat(upgrade.get()).isNull();
+                        assertThat(body.get()).contains(id.toString(), "test-request");
+                    });
+        } finally {
+            server.stop(0);
+        }
     }
 }
