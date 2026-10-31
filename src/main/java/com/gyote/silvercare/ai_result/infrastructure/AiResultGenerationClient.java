@@ -30,6 +30,13 @@ public class AiResultGenerationClient {
                 .body(GenerationResponse.class);
     }
 
+    /** 사용자가 저장을 확정한 답변만 상세 설명 문서로 확장한다. */
+    public GenerationResponse generateDetail(GenerationRequest request) {
+        return restClient.post().uri("/internal/ai-result-documents/generate-detail")
+                .contentType(MediaType.APPLICATION_JSON).body(request).retrieve()
+                .body(GenerationResponse.class);
+    }
+
     public record GenerationRequest(
             @JsonProperty("request_id") UUID requestId,
             @JsonProperty("patient_id") UUID patientId,

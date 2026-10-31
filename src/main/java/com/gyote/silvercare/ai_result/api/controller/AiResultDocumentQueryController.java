@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 import java.util.List;
+import com.gyote.silvercare.ai_result.command.application.AiDetailedDocumentService;
 
 /** 저장된 AI 답변의 원문 근거 조회 API를 제공한다. */
 @RestController
@@ -28,6 +29,7 @@ public class AiResultDocumentQueryController {
     private final AiResultDocumentQueryService queries;
     private final AiResultDocumentResponseMapper mapper;
     private final UserQueryService users;
+    private final AiDetailedDocumentService detailedDocuments;
 
     /** 생성된 AI 답변 문서를 식별자로 조회한다. */
     @GetMapping("/{resultDocumentId}")
@@ -46,7 +48,10 @@ public class AiResultDocumentQueryController {
     @PostMapping("/{resultDocumentId}/save")
     public AiResultDocumentResponseDto save(@AuthenticationPrincipal OAuth2User principal,
                                              @PathVariable UUID resultDocumentId) {
-        return mapper.toResponse(queries.save(actor(principal), resultDocumentId));
+        User actor = actor(principal);
+        queries.save(actor, resultDocumentId);
+        detailedDocuments.create(actor, resultDocumentId);
+        return mapper.toResponse(queries.get(actor, resultDocumentId));
     }
 
     /** 인증 정보에서 현재 요청 사용자를 조회한다. */
