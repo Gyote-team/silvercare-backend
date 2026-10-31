@@ -26,8 +26,7 @@ public class AiChatResponseMapper {
     public List<AiChatMessageResponseDto> toMessageResponses(List<AiChatMessageView> views) {
         return views.stream().map(view -> new AiChatMessageResponseDto(
                 view.messageId(), view.role(), view.content(), view.createdAt(), view.resultDocumentId(),
-                view.resultDocumentId() == null ? null : "MARKDOWN", null,
-                view.resultDocumentId() == null ? null : "DRAFT"
+                view.contentFormat(), view.classifiedQuestionType(), view.documentSaveStatus()
         )).toList();
     }
 }

@@ -31,13 +31,17 @@ public class AiResultDocumentQueryService {
         if (!result.getRequestedByUserId().equals(actor.getId())) {
             throw new BusinessException(AiResultErrorCode.RESULT_FORBIDDEN);
         }
+        permissions.requireDocumentAccess(actor, result.getPatientId());
         return AiResultDocumentView.from(result);
     }
 
     @Transactional(readOnly = true)
     public List<AiResultDocumentView> listSaved(User actor) {
         return resultDocuments.findAllByRequestedByUserIdAndSaveStatusOrderBySavedAtDesc(
-                actor.getId(), DocumentSaveStatus.SAVED).stream().map(AiResultDocumentView::from).toList();
+                        actor.getId(), DocumentSaveStatus.SAVED).stream()
+                .filter(result -> hasDocumentAccess(actor, result))
+                .map(AiResultDocumentView::from)
+                .toList();
     }
 
     @Transactional
@@ -46,8 +50,18 @@ public class AiResultDocumentQueryService {
                 .orElseThrow(() -> new BusinessException(AiResultErrorCode.RESULT_NOT_FOUND));
         if (!result.getRequestedByUserId().equals(actor.getId()))
             throw new BusinessException(AiResultErrorCode.RESULT_FORBIDDEN);
+        permissions.requireDocumentAccess(actor, result.getPatientId());
         try { result.saveDocument(); }
         catch (IllegalStateException exception) { throw new BusinessException(AiResultErrorCode.RESULT_NOT_SAVABLE); }
         return AiResultDocumentView.from(result);
+    }
+
+    private boolean hasDocumentAccess(User actor, AiResultDocument result) {
+        try {
+            permissions.requireDocumentAccess(actor, result.getPatientId());
+            return true;
+        } catch (BusinessException exception) {
+            return false;
+        }
     }
 }
