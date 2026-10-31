@@ -11,11 +11,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
+import java.util.List;
 
 /** 저장된 AI 답변의 원문 근거 조회 API를 제공한다. */
 @RestController
@@ -34,6 +36,17 @@ public class AiResultDocumentQueryController {
             @PathVariable UUID resultDocumentId
     ) {
         return mapper.toResponse(queries.get(actor(principal), resultDocumentId));
+    }
+
+    @GetMapping
+    public List<AiResultDocumentResponseDto> list(@AuthenticationPrincipal OAuth2User principal) {
+        return queries.listSaved(actor(principal)).stream().map(mapper::toResponse).toList();
+    }
+
+    @PostMapping("/{resultDocumentId}/save")
+    public AiResultDocumentResponseDto save(@AuthenticationPrincipal OAuth2User principal,
+                                             @PathVariable UUID resultDocumentId) {
+        return mapper.toResponse(queries.save(actor(principal), resultDocumentId));
     }
 
     /** 인증 정보에서 현재 요청 사용자를 조회한다. */

@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.util.List;
+import com.gyote.silvercare.ai_result.domain.DocumentSaveStatus;
 
 /** 접근 권한을 검증해 저장된 AI 답변 문서를 조회한다. */
 @Service
@@ -26,7 +28,26 @@ public class AiResultDocumentQueryService {
     public AiResultDocumentView get(User actor, UUID resultDocumentId) {
         AiResultDocument result = resultDocuments.findById(resultDocumentId)
                 .orElseThrow(() -> new BusinessException(AiResultErrorCode.RESULT_NOT_FOUND));
-        permissions.requireDocumentAccess(actor, result.getPatientId());
+        if (!result.getRequestedByUserId().equals(actor.getId())) {
+            throw new BusinessException(AiResultErrorCode.RESULT_FORBIDDEN);
+        }
+        return AiResultDocumentView.from(result);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AiResultDocumentView> listSaved(User actor) {
+        return resultDocuments.findAllByRequestedByUserIdAndSaveStatusOrderBySavedAtDesc(
+                actor.getId(), DocumentSaveStatus.SAVED).stream().map(AiResultDocumentView::from).toList();
+    }
+
+    @Transactional
+    public AiResultDocumentView save(User actor, UUID id) {
+        AiResultDocument result = resultDocuments.findById(id)
+                .orElseThrow(() -> new BusinessException(AiResultErrorCode.RESULT_NOT_FOUND));
+        if (!result.getRequestedByUserId().equals(actor.getId()))
+            throw new BusinessException(AiResultErrorCode.RESULT_FORBIDDEN);
+        try { result.saveDocument(); }
+        catch (IllegalStateException exception) { throw new BusinessException(AiResultErrorCode.RESULT_NOT_SAVABLE); }
         return AiResultDocumentView.from(result);
     }
 }
