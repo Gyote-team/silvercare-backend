@@ -23,7 +23,12 @@ public class AiResultGenerationClientConfig {
             @Value("${silvercare.ai.connect-timeout:2s}") Duration connectTimeout,
             @Value("${silvercare.ai.result-read-timeout:330s}") Duration readTimeout
     ) {
-        HttpClient httpClient = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
+        // Uvicorn은 평문 HTTP/2(h2c) 업그레이드를 지원하지 않는다. JDK 기본 협상으로
+        // 요청 본문이 유실되지 않도록 Spring -> AI Backend 내부 호출은 HTTP/1.1로 고정한다.
+        HttpClient httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .connectTimeout(connectTimeout)
+                .build();
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
         requestFactory.setReadTimeout(readTimeout);
         builder.requestFactory(requestFactory);
