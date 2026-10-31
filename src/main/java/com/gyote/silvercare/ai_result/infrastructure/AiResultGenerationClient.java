@@ -30,6 +30,13 @@ public class AiResultGenerationClient {
                 .body(GenerationResponse.class);
     }
 
+    /** 사용자가 저장을 확정한 답변만 상세 설명 문서로 확장한다. */
+    public GenerationResponse generateDetail(GenerationRequest request) {
+        return restClient.post().uri("/internal/ai-result-documents/generate-detail")
+                .contentType(MediaType.APPLICATION_JSON).body(request).retrieve()
+                .body(GenerationResponse.class);
+    }
+
     public record GenerationRequest(
             @JsonProperty("request_id") UUID requestId,
             @JsonProperty("patient_id") UUID patientId,
@@ -58,13 +65,26 @@ public class AiResultGenerationClient {
             @JsonProperty("result_status") String resultStatus,
             String title,
             String answer,
+            @JsonProperty("content_format") String contentFormat,
+            @JsonProperty("prompt_version") String promptVersion,
             List<Sentence> sentences,
             boolean blocked,
             boolean failed,
             @JsonProperty("error_code") String errorCode,
-            @JsonProperty("user_message") String userMessage
+            @JsonProperty("user_message") String userMessage,
+            Usage usage,
+            @JsonProperty("question_type") QuestionType questionType
     ) {
+        public GenerationResponse(String resultStatus, String title, String answer, List<Sentence> sentences,
+                                  boolean blocked, boolean failed, String errorCode, String userMessage) {
+            this(resultStatus, title, answer, "MARKDOWN", "chat-grounded-v2", sentences,
+                    blocked, failed, errorCode, userMessage, null, null);
+        }
     }
+
+    public record Usage(String model, @JsonProperty("input_tokens") Integer inputTokens,
+                        @JsonProperty("output_tokens") Integer outputTokens,
+                        @JsonProperty("total_tokens") Integer totalTokens) { }
 
     public record Sentence(String text, @JsonProperty("citation_ids") List<UUID> citationIds) {
     }
