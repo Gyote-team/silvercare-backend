@@ -43,8 +43,19 @@ public class AiResultGenerationClient {
             @JsonProperty("actor_user_id") UUID actorUserId,
             String question,
             @JsonProperty("question_type_hint") QuestionType questionTypeHint,
+            @JsonProperty("allowed_document_ids") List<UUID> allowedDocumentIds,
+            @JsonProperty("allowed_health_record_ids") List<UUID> allowedHealthRecordIds,
             List<Evidence> evidence
     ) {
+        public GenerationRequest(UUID requestId, UUID patientId, UUID actorUserId, String question,
+                                 QuestionType questionTypeHint, List<Evidence> evidence) {
+            this(requestId, patientId, actorUserId, question, questionTypeHint,
+                    evidence.stream().filter(item -> !"HEALTH_RECORD".equals(item.sourceType()))
+                            .map(Evidence::documentId).filter(java.util.Objects::nonNull).distinct().toList(),
+                    evidence.stream().filter(item -> "HEALTH_RECORD".equals(item.sourceType()))
+                            .map(Evidence::sourceId).filter(java.util.Objects::nonNull).distinct().toList(),
+                    evidence);
+        }
     }
 
     public record Evidence(
