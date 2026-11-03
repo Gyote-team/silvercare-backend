@@ -30,5 +30,7 @@ jwt:
   secret: test-secret-test-secret-test-secret-32
 
 silvercare:
+  previsit:
+    processing-enabled: false
   demo-login: true
   frontend-origin: http://localhost:3000
