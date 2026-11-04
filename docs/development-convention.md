@@ -14,6 +14,7 @@ src/main/java/com/gyote/silvercare/
 ├─ visit/                            # 병원 방문 CRUD·취소 및 하위 자료 참조 조회
 ├─ medical_document/                 # 의료 문서·업로드 메타데이터 (구조 준비)
 ├─ ai_result/                        # 문서 근거 기반 AI 답변 생성·결과 조회
+├─ previsit_summary/                 # 최근 건강기록 선정·비동기 진료 전 요약·근거 조회
 ├─ ai_chat/                          # 대상별 AI 채팅방·메시지
 ├─ action_item/                      # 할 일 후보 승인·거절 (구조 준비)
 ├─ schedule/                         # 일정·복약 알림 (구조 준비)

@@ -61,6 +61,9 @@ logging:
     org.springframework.security.oauth2: INFO
 
 silvercare:
+  previsit:
+    enabled: ${PREVISIT_ENABLED:false}
+    processing-enabled: ${PREVISIT_PROCESSING_ENABLED:true}
   voice:
     enabled: ${VOICE_ENABLED:false}
   demo-login: ${DEMO_LOGIN:false}

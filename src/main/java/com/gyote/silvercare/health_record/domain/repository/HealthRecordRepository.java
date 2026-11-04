@@ -14,6 +14,11 @@ import java.util.UUID;
 
 /** 삭제 상태와 대상 개인을 기준으로 건강기록을 조회한다. */
 public interface HealthRecordRepository extends JpaRepository<HealthRecord, UUID> {
+    /** 요약 요청 시 서버가 정한 최근 기간의 유효한 기록만 선정한다. */
+    @Query("select r from HealthRecord r where r.patientId=:patientId and r.deletedAt is null "
+            + "and r.recordedAt>=:start and r.recordedAt<=:end order by r.recordedAt,r.id")
+    List<HealthRecord> findSummaryWindow(@Param("patientId") UUID patientId,
+            @Param("start") Instant start, @Param("end") Instant end, Pageable page);
     /** 삭제되지 않은 기록만 상세 조회한다. */
     Optional<HealthRecord> findByIdAndDeletedAtIsNull(UUID id);
 
