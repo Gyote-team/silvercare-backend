@@ -57,11 +57,6 @@ public class AiResultDocumentQueryService {
     }
 
     private boolean hasDocumentAccess(User actor, AiResultDocument result) {
-        try {
-            permissions.requireDocumentAccess(actor, result.getPatientId());
-            return true;
-        } catch (BusinessException exception) {
-            return false;
-        }
+        return permissions.hasDocumentAccess(actor, result.getPatientId());
     }
 }

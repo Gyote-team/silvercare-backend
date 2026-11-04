@@ -60,7 +60,7 @@ public class AiDetailedDocumentService {
    if(source.getSaveStatus()!=DocumentSaveStatus.SAVED || source.getJobStatus()!=AiJobStatus.SUCCEEDED ||
            (source.getResultStatus()!=ResultStatus.COMPLETE && source.getResultStatus()!=ResultStatus.PARTIAL))
      throw new BusinessException(AiResultErrorCode.RESULT_NOT_SAVABLE);
-   var existing=detailed.findByResultDocumentId(resultId);
+   var existing=detailed.findByResultDocumentIdForUpdate(resultId);
    if (existing.isPresent()) {
      var doc=existing.get();
      if (doc.getStatus() == DetailedDocumentStatus.READY || doc.getStatus() == DetailedDocumentStatus.GENERATING) return new Reservation(source, null, doc);
