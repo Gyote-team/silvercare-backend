@@ -25,7 +25,8 @@ public class AiChatResponseMapper {
     /** 채팅 메시지 조회 결과 목록을 HTTP 응답 목록으로 변환한다. */
     public List<AiChatMessageResponseDto> toMessageResponses(List<AiChatMessageView> views) {
         return views.stream().map(view -> new AiChatMessageResponseDto(
-                view.messageId(), view.role(), view.content(), view.createdAt(), view.resultDocumentId()
+                view.messageId(), view.role(), view.content(), view.createdAt(), view.resultDocumentId(),
+                view.contentFormat(), view.classifiedQuestionType(), view.documentSaveStatus()
         )).toList();
     }
 }

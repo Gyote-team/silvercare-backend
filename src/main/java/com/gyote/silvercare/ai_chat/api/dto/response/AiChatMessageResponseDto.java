@@ -10,6 +10,9 @@ public record AiChatMessageResponseDto(
         ChatRole role,
         String content,
         Instant createdAt,
-        UUID resultDocumentId
+        UUID resultDocumentId,
+        String contentFormat,
+        String classifiedQuestionType,
+        String documentSaveStatus
 ) {
 }
