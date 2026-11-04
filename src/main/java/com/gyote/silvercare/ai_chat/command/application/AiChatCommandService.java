@@ -11,6 +11,7 @@ import com.gyote.silvercare.ai_chat.query.model.AiChatSessionView;
 import com.gyote.silvercare.ai_result.command.application.AiResultDocumentCommandService;
 import com.gyote.silvercare.ai_result.domain.QuestionType;
 import com.gyote.silvercare.ai_result.query.model.AiResultDocumentView;
+import com.gyote.silvercare.ai_result.domain.repository.AiResultDocumentRepository;
 import com.gyote.silvercare.global.exception.BusinessException;
 import com.gyote.silvercare.global.status.AiJobStatus;
 import com.gyote.silvercare.medical_document.query.application.CareRelationPermissionService;
@@ -22,7 +23,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /** AI 채팅방 생성과 문서 근거 기반 질문 처리를 담당한다. */
 @Service
@@ -32,6 +36,7 @@ public class AiChatCommandService {
     private final ChatMessageRepository messages;
     private final CareRelationPermissionService permissions;
     private final AiResultDocumentCommandService resultDocuments;
+    private final AiResultDocumentRepository resultDocumentRepository;
     private final TransactionTemplate transactions;
 
     public AiChatCommandService(
@@ -39,12 +44,14 @@ public class AiChatCommandService {
             ChatMessageRepository messages,
             CareRelationPermissionService permissions,
             AiResultDocumentCommandService resultDocuments,
+            AiResultDocumentRepository resultDocumentRepository,
             PlatformTransactionManager transactionManager
     ) {
         this.sessions = sessions;
         this.messages = messages;
         this.permissions = permissions;
         this.resultDocuments = resultDocuments;
+        this.resultDocumentRepository = resultDocumentRepository;
         this.transactions = new TransactionTemplate(transactionManager);
     }
 
@@ -78,8 +85,15 @@ public class AiChatCommandService {
         );
         return transactions.execute(status -> {
             messages.save(ChatMessage.answer(sessionId, answerText(answer), answer.resultDocumentId()));
-            return messages.findBySessionIdOrderByCreatedAtAsc(sessionId)
-                    .stream().map(AiChatMessageView::from).toList();
+            var storedMessages = messages.findBySessionIdOrderByCreatedAtAsc(sessionId);
+            var resultIds = storedMessages.stream().map(message -> message.getResultDocumentId())
+                    .filter(java.util.Objects::nonNull).distinct().toList();
+            Map<UUID, com.gyote.silvercare.ai_result.domain.entity.AiResultDocument> resultById =
+                    resultDocumentRepository.findAllById(resultIds).stream().collect(Collectors.toMap(
+                            com.gyote.silvercare.ai_result.domain.entity.AiResultDocument::getId, Function.identity()));
+            return storedMessages.stream()
+                    .map(message -> AiChatMessageView.from(message, resultById.get(message.getResultDocumentId())))
+                    .toList();
         });
     }
 

@@ -1,6 +1,8 @@
 package com.gyote.silvercare.ai_result.domain.entity;
 
 import com.gyote.silvercare.ai_result.domain.QuestionType;
+import com.gyote.silvercare.ai_result.domain.ContentFormat;
+import com.gyote.silvercare.ai_result.domain.DocumentSaveStatus;
 import com.gyote.silvercare.global.status.AiJobStatus;
 import com.gyote.silvercare.global.status.ResultStatus;
 import jakarta.persistence.Column;
@@ -48,6 +50,20 @@ public class AiResultDocument {
     private String citationJson;
     @Column(name = "error_message")
     private String errorMessage;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "content_format", nullable = false)
+    private ContentFormat contentFormat = ContentFormat.MARKDOWN;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "save_status", nullable = false)
+    private DocumentSaveStatus saveStatus = DocumentSaveStatus.DRAFT;
+    @Column(name = "saved_at")
+    private Instant savedAt;
+    @Column(name = "classification_source")
+    private String classificationSource;
+    @Column(name = "classification_confidence")
+    private Double classificationConfidence;
+    @Column(name = "prompt_version")
+    private String promptVersion;
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
     @Column(name = "completed_at")
@@ -61,7 +77,7 @@ public class AiResultDocument {
         result.patientId = patientId;
         result.requestedByUserId = requesterId;
         result.question = question;
-        result.questionType = type;
+        result.questionType = type == null ? QuestionType.UNSUPPORTED : type.canonical();
         result.jobStatus = AiJobStatus.QUEUED;
         result.createdAt = Instant.now();
         return result;
@@ -80,6 +96,25 @@ public class AiResultDocument {
         this.content = content;
         this.citationJson = citationJson;
         completedAt = Instant.now();
+    }
+
+    public void recordGenerationMetadata(String promptVersion) {
+        this.promptVersion = promptVersion;
+    }
+
+    public void recordClassification(QuestionType type, String source, Double confidence) {
+        if (type != null) this.questionType = type.canonical();
+        this.classificationSource = source;
+        this.classificationConfidence = confidence;
+    }
+
+    public void saveDocument() {
+        if (jobStatus != AiJobStatus.SUCCEEDED ||
+                (resultStatus != ResultStatus.COMPLETE && resultStatus != ResultStatus.PARTIAL)) {
+            throw new IllegalStateException("저장할 수 있는 AI 결과가 아닙니다.");
+        }
+        saveStatus = DocumentSaveStatus.SAVED;
+        if (savedAt == null) savedAt = Instant.now();
     }
 
     /** 실패 사유를 저장하고 작업을 실패 상태로 완료한다. */

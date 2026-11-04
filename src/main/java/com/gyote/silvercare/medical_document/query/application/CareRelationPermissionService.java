@@ -64,15 +64,33 @@ public class CareRelationPermissionService {
         throw new BusinessException(AiDocumentErrorCode.DOCUMENT_ACCESS_DENIED);
     }
 
+    /** 목록 필터링처럼 권한 없음을 정상적인 조회 결과로 처리할 때 사용한다. */
+    public boolean hasDocumentAccess(User actor, UUID documentPatientId) {
+        if (actor.getRole() == UserRole.PATIENT) {
+            try {
+                return ownPatientId(actor).equals(documentPatientId);
+            } catch (BusinessException exception) {
+                return false;
+            }
+        }
+        if (actor.getRole() == UserRole.CAREGIVER) {
+            return hasCaregiverAccess(actor, documentPatientId);
+        }
+        return false;
+    }
+
     /** 보호자와 환자 사이에 활성화된 돌봄 관계가 있는지 검증한다. */
     private void requireCaregiverAccess(User caregiver, UUID patientId) {
+        if (!hasCaregiverAccess(caregiver, patientId)) {
+            throw new BusinessException(AiDocumentErrorCode.DOCUMENT_ACCESS_DENIED);
+        }
+    }
+
+    private boolean hasCaregiverAccess(User caregiver, UUID patientId) {
         var relation = relations.findFirstByPatientIdAndCaregiverIdAndStatus(
                 patientId, caregiver.getId(), CareRelationStatus.ACTIVE
         );
-        if (!patients.existsById(patientId)
-                || relation.isEmpty()) {
-            throw new BusinessException(AiDocumentErrorCode.DOCUMENT_ACCESS_DENIED);
-        }
+        return patients.existsById(patientId) && relation.isPresent();
     }
 
     /** 환자 사용자와 연결된 환자 식별자를 조회한다. */

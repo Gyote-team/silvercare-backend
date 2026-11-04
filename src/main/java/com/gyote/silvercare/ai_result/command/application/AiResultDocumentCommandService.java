@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gyote.silvercare.ai_result.domain.QuestionType;
 import com.gyote.silvercare.ai_result.domain.entity.AiResultDocument;
 import com.gyote.silvercare.ai_result.domain.repository.AiResultDocumentRepository;
+import com.gyote.silvercare.ai_result.domain.repository.AiLlmUsageEventRepository;
+import com.gyote.silvercare.ai_result.domain.entity.AiLlmUsageEvent;
 import com.gyote.silvercare.ai_result.infrastructure.AiResultGenerationClient;
 import com.gyote.silvercare.ai_result.query.model.AiResultDocumentView;
 import com.gyote.silvercare.global.status.ResultStatus;
@@ -32,6 +34,7 @@ public class AiResultDocumentCommandService {
     private final CareRelationPermissionService permissions;
     private final ObjectProvider<AiResultGenerationClient> generationClients;
     private final ObjectMapper objectMapper;
+    private final AiLlmUsageEventRepository usageEvents;
     private final TransactionTemplate transactions;
 
     public AiResultDocumentCommandService(
@@ -40,6 +43,7 @@ public class AiResultDocumentCommandService {
             CareRelationPermissionService permissions,
             ObjectProvider<AiResultGenerationClient> generationClients,
             ObjectMapper objectMapper,
+            AiLlmUsageEventRepository usageEvents,
             PlatformTransactionManager transactionManager
     ) {
         this.resultDocuments = resultDocuments;
@@ -47,6 +51,7 @@ public class AiResultDocumentCommandService {
         this.permissions = permissions;
         this.generationClients = generationClients;
         this.objectMapper = objectMapper;
+        this.usageEvents = usageEvents;
         this.transactions = new TransactionTemplate(transactionManager);
     }
 
@@ -94,10 +99,23 @@ public class AiResultDocumentCommandService {
             return fail(resultId, "AI 응답 처리 중 오류가 발생했어요 (" + exception.getClass().getSimpleName() + ").");
         }
         try {
+            recordUsage(resultId, generated);
             return applyGenerationResult(resultId, generated, evidence);
         } catch (Exception exception) {
             return fail(resultId, "AI 응답 처리 중 오류가 발생했어요 (" + exception.getClass().getSimpleName() + ").");
         }
+    }
+
+    private void recordUsage(UUID resultId, AiResultGenerationClient.GenerationResponse response) {
+        AiResultGenerationClient.Usage usage = response.usage();
+        transactions.executeWithoutResult(status -> {
+            AiResultDocument result = resultDocuments.findById(resultId).orElseThrow();
+            result.recordGenerationMetadata(response.promptVersion());
+            result.recordClassification(response.questionType(), "RULE", null);
+            usageEvents.save(AiLlmUsageEvent.answer(resultId, usage == null ? null : usage.model(),
+                usage == null ? null : usage.inputTokens(), usage == null ? null : usage.outputTokens(),
+                usage == null ? null : usage.totalTokens(), !response.failed(), response.errorCode()));
+        });
     }
 
     /** AI Backend 응답 상태에 따라 결과 문서를 성공, 제한, 실패 상태로 갱신한다. */

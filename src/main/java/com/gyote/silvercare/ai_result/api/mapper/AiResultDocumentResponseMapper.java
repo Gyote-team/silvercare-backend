@@ -11,7 +11,10 @@ public class AiResultDocumentResponseMapper {
     /** 원문 근거 표시에 필요한 필드만 HTTP 응답으로 변환한다. */
     public AiResultDocumentResponseDto toResponse(AiResultDocumentView view) {
         return new AiResultDocumentResponseDto(
-                view.resultDocumentId(), view.citationJson(), view.errorMessage()
+                view.resultDocumentId(), view.jobStatus().name(),
+                view.resultStatus() == null ? null : view.resultStatus().name(), view.title(), view.content(),
+                view.contentFormat(), view.questionType().name(), view.saveStatus().name(), view.savedAt(),
+                view.citationJson(), view.errorMessage()
         );
     }
 }
