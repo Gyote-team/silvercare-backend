@@ -127,6 +127,34 @@ class PrevisitSummaryApiTest {
     }
 
     @Test
+    void thirtyDayWindowDoesNotAutomaticallyIncludeOlderRecords() throws Exception {
+        var old=record("45일 전 기록");
+        jdbc.update("update health_records set recorded_at=? where id=?",Instant.now().minusSeconds(45L*86400),old.getId());
+        em.clear();
+        UUID request=create(token,"{\"windowDays\":30}",UUID.randomUUID().toString());
+        mvc.perform(get("/api/ai-operations/"+request).header("Authorization","Bearer "+token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.resultStatus").value("INSUFFICIENT"));
+        mvc.perform(get("/api/previsit-summaries/"+summaryId(request)).header("Authorization","Bearer "+token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.windowDays").value(30))
+                .andExpect(jsonPath("$.usedHealthRecordIds").isEmpty());
+        verify(provider,never()).generate(any());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings={"AI_OUTPUT_LIMIT","AI_CONTENT_FILTERED"})
+    void incompleteProviderReasonsRemainDistinctAndDoNotExposePartialText(String code) throws Exception {
+        record("기록"); UUID request=create();
+        doReturn(new PrevisitGenerationPort.Result(request,"부분 응답",List.of(),null,true,code,false))
+                .when(provider).generate(any());
+        commands.processNext();
+        var row=jobs.findById(request).orElseThrow();
+        assertThat(row.getSummary()).isNull(); assertThat(row.getSummaryId()).isNull();
+        mvc.perform(get("/api/ai-operations/"+request).header("Authorization","Bearer "+token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.jobStatus").value("FAILED"))
+                .andExpect(jsonPath("$.errorCode").value(code)).andExpect(jsonPath("$.retryable").value(false));
+    }
+
+    @Test
     void requestedCaregiverAndOtherPatientAreDeniedWhileActiveCanRequestAndRead() throws Exception {
         record("기록"); UUID request=create();
         var relation=cares.request(caregiver,accounts.patientInviteCode(personal));

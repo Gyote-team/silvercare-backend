@@ -113,7 +113,8 @@ public class PrevisitSummaryCommandService {
         catch(BusinessException denied) { row.fail("SOURCE_UNAVAILABLE",false); return; }
         if(result==null || !row.getId().equals(result.requestId())) { row.fail("AI_RESPONSE_INVALID",false); return; }
         if(result.failed()) {
-            var safe=Set.of("AI_TIMEOUT","AI_RATE_LIMIT","AI_API_KEY_MISSING","AI_RESPONSE_INVALID","AI_UNAVAILABLE","AI_AUTH_FAILED");
+            var safe=Set.of("AI_TIMEOUT","AI_RATE_LIMIT","AI_API_KEY_MISSING","AI_RESPONSE_INVALID","AI_UNAVAILABLE","AI_AUTH_FAILED",
+                    "AI_OUTPUT_LIMIT","AI_CONTENT_FILTERED");
             row.fail(result.errorCode()!=null && safe.contains(result.errorCode())?result.errorCode():"AI_UNAVAILABLE",result.retryable()); return;
         }
         var allowed=ticket.input().records().stream().map(PrevisitGenerationPort.Source::healthRecordId).collect(Collectors.toSet());

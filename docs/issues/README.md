@@ -5,4 +5,3 @@
 - [이슈 11: 건강기록 및 계정 전환](issue-11-health-records.md)
 - [이슈 12·17: 음성 건강기록 및 진료실 녹음](issue-12-17-voice-recording.md)
 - [이슈 13: 병원 방문 관리](issue-13-visits.md)
-- [이슈 16: 진료 전 요약](issue-16-previsit-summary.md)
