@@ -1,5 +1,7 @@
 package com.gyote.silvercare.ai_result.command.application;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gyote.silvercare.ai_result.domain.entity.*;
 import com.gyote.silvercare.ai_result.domain.repository.*;
 import com.gyote.silvercare.ai_result.infrastructure.AiResultGenerationClient;
@@ -24,6 +26,7 @@ public class AiDetailedDocumentService {
  private final AiDetailedDocumentRepository detailed; private final AiResultDocumentRepository results;
  private final AiEvidenceRetriever evidenceRetriever; private final ObjectProvider<AiResultGenerationClient> clients; private final DocumentStoragePort storage;
  private final CareRelationPermissionService permissions;
+ private final ObjectMapper objectMapper;
  @Value("${silvercare.pdf.font-path:}") private String pdfFontPath;
  @Transactional
  public AiDetailedDocument create(User actor, UUID resultId) {
@@ -37,14 +40,32 @@ public class AiDetailedDocumentService {
    var doc=existing.orElseGet(() -> detailed.save(AiDetailedDocument.generating(resultId, actor.getId())));
    try {
      var client=clients.getIfAvailable(); if(client==null) throw new IllegalStateException("AI 서버 설정이 없습니다.");
-     var evidence=evidenceRetriever.retrieve(source.getPatientId(), List.of());
+     var evidence=evidenceRetriever.retrieve(source.getPatientId(), sourceDocumentIds(source.getCitationJson()));
+     if(evidence.isEmpty()) throw new IllegalStateException("상세 문서 생성에 사용할 근거가 없습니다.");
      var response=client.generateDetail(new AiResultGenerationClient.GenerationRequest(source.getRequestId(), source.getPatientId(), actor.getId(), source.getQuestion(), source.getQuestionType(), evidence));
-     if(response.failed() || response.blocked()) throw new IllegalStateException(response.userMessage());
+     if(response.failed() || response.blocked() || response.answer() == null || response.answer().isBlank()) throw new IllegalStateException(response.userMessage()==null?"상세 문서 답변이 비어 있습니다.":response.userMessage());
      String content=response.answer(); String title=response.title(); String key="ai-detailed/"+doc.getId()+"/report.pdf";
      storage.storeOriginal(key, SimplePdfRenderer.render(title, content, pdfFontPath), "application/pdf");
-     doc.complete(title, content, source.getCitationJson(), key, safeFileName(title)+".pdf"); return doc;
+     doc.complete(title, content, citations(response, evidence), key, safeFileName(title)+".pdf"); return doc;
    } catch(Exception e) { doc.fail(e.getMessage()==null?"상세 문서 생성에 실패했습니다.":e.getMessage()); return doc; }
  }
  @Transactional(readOnly=true) public AiDetailedDocument get(User actor, UUID id) { var d=detailed.findById(id).orElseThrow(); if(!d.getRequestedByUserId().equals(actor.getId())) throw new BusinessException(AiResultErrorCode.RESULT_FORBIDDEN); var source=results.findById(d.getResultDocumentId()).orElseThrow(); permissions.requireDocumentAccess(actor, source.getPatientId()); return d; }
  private static String safeFileName(String title){ return (title==null||title.isBlank()?"AI_상세설명":title).replaceAll("[\\\\/:*?\"<>|]", "_"); }
+ private String citations(AiResultGenerationClient.GenerationResponse response, List<AiResultGenerationClient.Evidence> evidence) {
+   try { return objectMapper.writeValueAsString(Map.of("sentences", response.sentences()==null?List.of():response.sentences(), "sources", evidence)); }
+   catch (Exception ignored) { return "[]"; }
+ }
+ private List<UUID> sourceDocumentIds(String citationJson) {
+   if (citationJson == null || citationJson.isBlank()) return List.of();
+   try {
+     JsonNode sources = objectMapper.readTree(citationJson).path("sources");
+     if (!sources.isArray()) return List.of();
+     List<UUID> ids = new ArrayList<>();
+     for (JsonNode source : sources) {
+       String value = source.path("document_id").asText(null);
+       if (value != null) try { ids.add(UUID.fromString(value)); } catch (IllegalArgumentException ignored) { }
+     }
+     return ids.stream().distinct().toList();
+   } catch (Exception ignored) { return List.of(); }
+ }
 }
