@@ -46,13 +46,23 @@ public class AiDetailedDocumentService {
      if(response.failed() || response.blocked() || response.answer() == null || response.answer().isBlank()) throw new IllegalStateException(response.userMessage()==null?"상세 문서 답변이 비어 있습니다.":response.userMessage());
      String content=response.answer(); String title=response.title(); String key="ai-detailed/"+doc.getId()+"/report.pdf";
      storage.storeOriginal(key, SimplePdfRenderer.render(title, content, pdfFontPath), "application/pdf");
-     doc.complete(title, content, citations(response, evidence), key, safeFileName(title)+".pdf"); return doc;
+     String citationJson = citations(response, evidence);
+     if (citationJson.equals("[]")) throw new IllegalStateException("상세 문서 답변의 근거를 확인하지 못했습니다.");
+     doc.complete(title, content, citationJson, key, safeFileName(title)+".pdf"); return doc;
    } catch(Exception e) { doc.fail(e.getMessage()==null?"상세 문서 생성에 실패했습니다.":e.getMessage()); return doc; }
  }
  @Transactional(readOnly=true) public AiDetailedDocument get(User actor, UUID id) { var d=detailed.findById(id).orElseThrow(); if(!d.getRequestedByUserId().equals(actor.getId())) throw new BusinessException(AiResultErrorCode.RESULT_FORBIDDEN); var source=results.findById(d.getResultDocumentId()).orElseThrow(); permissions.requireDocumentAccess(actor, source.getPatientId()); return d; }
  private static String safeFileName(String title){ return (title==null||title.isBlank()?"AI_상세설명":title).replaceAll("[\\\\/:*?\"<>|]", "_"); }
  private String citations(AiResultGenerationClient.GenerationResponse response, List<AiResultGenerationClient.Evidence> evidence) {
-   try { return objectMapper.writeValueAsString(Map.of("sentences", response.sentences()==null?List.of():response.sentences(), "sources", evidence)); }
+   try {
+     Set<UUID> allowed = evidence.stream().map(AiResultGenerationClient.Evidence::citationId).filter(Objects::nonNull).collect(java.util.stream.Collectors.toSet());
+     List<AiResultGenerationClient.Sentence> validSentences = response.sentences()==null ? List.of() : response.sentences().stream()
+             .filter(Objects::nonNull)
+             .filter(sentence -> sentence.citationIds()!=null && !sentence.citationIds().isEmpty())
+             .filter(sentence -> allowed.containsAll(sentence.citationIds()))
+             .toList();
+     return validSentences.isEmpty() ? "[]" : objectMapper.writeValueAsString(Map.of("sentences", validSentences, "sources", evidence));
+   }
    catch (Exception ignored) { return "[]"; }
  }
  private List<UUID> sourceDocumentIds(String citationJson) {
