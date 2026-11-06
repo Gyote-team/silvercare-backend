@@ -99,6 +99,22 @@ class AiChatTransactionBoundaryTest {
                 .extracting(message -> message.getRole()).containsExactly(ChatRole.USER, ChatRole.ASSISTANT);
     }
 
+    @Test
+    void missingDocumentsIsSavedAsAnAssistantPrompt() {
+        User actor = actor();
+        UUID patientId = UUID.randomUUID();
+        ChatSession session = sessions.save(ChatSession.open(patientId, actor.getId(), "새 채팅"));
+        when(permissions.resolveTargetPatient(actor, patientId)).thenReturn(patientId);
+
+        var conversation = chats.ask(actor, session.getId(), "검사 결과를 알려줘",
+                QuestionType.DOCUMENT_EASY_EXPLANATION, List.of());
+
+        assertThat(conversation).hasSize(2);
+        assertThat(conversation.get(1).content()).isEqualTo("답변을 위해 문서를 선택해 주세요.");
+        assertThat(conversation.get(1).resultDocumentId()).isNull();
+        assertThat(results.findAll()).isEmpty();
+    }
+
     private User actor() {
         User actor = new User();
         actor.setId(UUID.randomUUID());
