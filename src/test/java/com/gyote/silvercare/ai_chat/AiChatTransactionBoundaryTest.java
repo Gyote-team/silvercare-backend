@@ -11,6 +11,7 @@ import com.gyote.silvercare.ai_chat.domain.entity.ChatSession;
 import com.gyote.silvercare.ai_chat.domain.repository.ChatMessageRepository;
 import com.gyote.silvercare.ai_chat.domain.repository.ChatSessionRepository;
 import com.gyote.silvercare.ai_result.command.application.AiEvidenceRetriever;
+import com.gyote.silvercare.ai_result.command.application.ChatDocumentScopeValidator;
 import com.gyote.silvercare.ai_result.domain.QuestionType;
 import com.gyote.silvercare.ai_result.domain.repository.AiResultDocumentRepository;
 import com.gyote.silvercare.ai_result.infrastructure.AiResultGenerationClient;
@@ -37,6 +38,7 @@ class AiChatTransactionBoundaryTest {
     @MockBean CareRelationPermissionService permissions;
     @MockBean AiEvidenceRetriever evidenceRetriever;
     @MockBean AiResultGenerationClient client;
+    @MockBean ChatDocumentScopeValidator documentScopeValidator;
 
     @Test
     void aiCallSeesCommittedQuestionAndResultWithoutTransaction() {
@@ -46,21 +48,33 @@ class AiChatTransactionBoundaryTest {
         QuestionType type = QuestionType.DOCUMENT_EASY_EXPLANATION;
         when(permissions.resolveTargetPatient(actor, patientId)).thenReturn(patientId);
         when(evidenceRetriever.retrieve(eq(patientId), any())).thenReturn(List.of(evidence()));
+        UUID documentId = UUID.randomUUID();
+        UUID chunkId = UUID.randomUUID();
+        UUID citationId = UUID.randomUUID();
         when(client.generate(any())).thenAnswer(invocation -> {
+            AiResultGenerationClient.GenerationRequest request = invocation.getArgument(0);
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            assertThat(request.allowedDocumentIds()).containsExactly(documentId);
             assertThat(messages.findBySessionIdOrderByCreatedAtAsc(session.getId()))
                     .extracting(message -> message.getRole()).containsExactly(ChatRole.USER);
             assertThat(results.findAll()).anySatisfy(result ->
                     assertThat(result.getJobStatus()).isEqualTo(AiJobStatus.RUNNING));
             return new AiResultGenerationClient.GenerationResponse(
-                    "COMPLETE", "답변", "확인한 내용입니다.", List.of(), false, false, null, null);
+                    "COMPLETE", "답변", "확인한 내용입니다.", "MARKDOWN", "chat-grounded-v2",
+                    List.of(new AiResultGenerationClient.Sentence("확인한 내용입니다.", List.of(citationId))),
+                    false, false, null, null, null, type,
+                    List.of(new AiResultGenerationClient.Evidence(citationId, "DOCUMENT_CHUNK",
+                            chunkId, documentId, 2, null, "청크 원문", null, null, null)));
         });
 
-        var conversation = chats.ask(actor, session.getId(), "결과를 알려줘", type, List.of(UUID.randomUUID()));
+        var conversation = chats.ask(actor, session.getId(), "결과를 알려줘", type, List.of(documentId));
 
         assertThat(conversation).hasSize(2);
         assertThat(results.findAll()).anySatisfy(result ->
-                assertThat(result.getJobStatus()).isEqualTo(AiJobStatus.SUCCEEDED));
+                {
+                    assertThat(result.getJobStatus()).isEqualTo(AiJobStatus.SUCCEEDED);
+                    assertThat(result.getCitationJson()).contains(chunkId.toString(), "DOCUMENT_CHUNK", "청크 원문");
+                });
     }
 
     @Test
@@ -70,13 +84,14 @@ class AiChatTransactionBoundaryTest {
         ChatSession session = sessions.save(ChatSession.open(patientId, actor.getId(), "새 채팅"));
         when(permissions.resolveTargetPatient(actor, patientId)).thenReturn(patientId);
         when(evidenceRetriever.retrieve(eq(patientId), any())).thenReturn(List.of(evidence()));
+        UUID documentId = UUID.randomUUID();
         when(client.generate(any())).thenAnswer(invocation -> {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
             throw new ResourceAccessException("connection failed");
         });
 
         chats.ask(actor, session.getId(), "결과를 알려줘", QuestionType.DOCUMENT_EASY_EXPLANATION,
-                List.of(UUID.randomUUID()));
+                List.of(documentId));
 
         assertThat(results.findAll()).anySatisfy(result ->
                 assertThat(result.getJobStatus()).isEqualTo(AiJobStatus.FAILED));
@@ -94,4 +109,5 @@ class AiChatTransactionBoundaryTest {
         return new AiResultGenerationClient.Evidence(UUID.randomUUID(), "EXTRACTED_ITEM",
                 UUID.randomUUID(), UUID.randomUUID(), 1, "검사", "검사 결과", "1", "mg", "0-2");
     }
+
 }

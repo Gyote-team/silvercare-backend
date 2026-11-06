@@ -38,7 +38,7 @@ class ResultDocumentEvidenceRepositoryTest {
     }
 
     @Test
-    void dividesFortyItemsEvenlyAcrossTwoDocuments() {
+    void dividesTwentyFourItemsEvenlyAcrossTwoDocuments() {
         UUID older = document(Instant.parse("2026-10-01T00:00:00Z"));
         UUID newer = document(Instant.parse("2026-10-02T00:00:00Z"));
         items(analysis(older, "SUCCEEDED", Instant.parse("2026-10-01T01:00:00Z")), 40);
@@ -46,9 +46,9 @@ class ResultDocumentEvidenceRepositoryTest {
 
         var rows = evidence.findEvidence(patientId, List.of(older, newer));
 
-        assertThat(rows).hasSize(40);
-        assertThat(count(rows, older)).isEqualTo(20);
-        assertThat(count(rows, newer)).isEqualTo(20);
+        assertThat(rows).hasSize(24);
+        assertThat(count(rows, older)).isEqualTo(12);
+        assertThat(count(rows, newer)).isEqualTo(12);
     }
 
     @Test
@@ -60,9 +60,9 @@ class ResultDocumentEvidenceRepositoryTest {
 
         var rows = evidence.findEvidence(patientId, List.of(smaller, larger));
 
-        assertThat(rows).hasSize(40);
+        assertThat(rows).hasSize(24);
         assertThat(count(rows, smaller)).isEqualTo(5);
-        assertThat(count(rows, larger)).isEqualTo(35);
+        assertThat(count(rows, larger)).isEqualTo(19);
     }
 
     @Test
