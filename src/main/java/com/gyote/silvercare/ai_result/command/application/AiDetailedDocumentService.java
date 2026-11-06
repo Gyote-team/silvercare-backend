@@ -36,9 +36,13 @@ public class AiDetailedDocumentService {
    var source = reservation.source(); var docId = reservation.documentId();
    try {
      var client=clients.getIfAvailable(); if(client==null) throw new IllegalStateException("AI 서버 설정이 없습니다.");
-     var evidence=evidenceRetriever.retrieve(source.getPatientId(), sourceDocumentIds(source.getCitationJson()));
-     if(evidence.isEmpty()) throw new IllegalStateException("상세 문서 생성에 사용할 근거가 없습니다.");
-     var response=client.generateDetail(new AiResultGenerationClient.GenerationRequest(source.getRequestId(), source.getPatientId(), actor.getId(), source.getQuestion(), source.getQuestionType(), evidence));
+     var documentIds=sourceDocumentIds(source.getCitationJson());
+     var evidence=evidenceRetriever.retrieve(source.getPatientId(), documentIds);
+     if(evidence.isEmpty() && documentIds.isEmpty()) throw new IllegalStateException("상세 문서 생성에 사용할 근거가 없습니다.");
+     var request=new AiResultGenerationClient.GenerationRequest(
+             source.getRequestId(), source.getPatientId(), actor.getId(), source.getQuestion(),
+             source.getQuestionType(), documentIds, List.of(), evidence);
+     var response=client.generateDetail(request);
      if(response.failed() || response.blocked() || response.answer() == null || response.answer().isBlank()) throw new IllegalStateException(response.userMessage()==null?"상세 문서 답변이 비어 있습니다.":response.userMessage());
      String content=response.answer(); String title=response.title(); String key="ai-detailed/"+docId+"/report.pdf";
      storage.storeOriginal(key, SimplePdfRenderer.render(title, content, pdfFontPath), "application/pdf");
@@ -81,13 +85,15 @@ public class AiDetailedDocumentService {
  private static String safeFileName(String title){ return (title==null||title.isBlank()?"AI_상세설명":title).replaceAll("[\\\\/:*?\"<>|]", "_"); }
  private String citations(AiResultGenerationClient.GenerationResponse response, List<AiResultGenerationClient.Evidence> evidence) {
    try {
-     Set<UUID> allowed = evidence.stream().map(AiResultGenerationClient.Evidence::citationId).filter(Objects::nonNull).collect(java.util.stream.Collectors.toSet());
+     List<AiResultGenerationClient.Evidence> sources = response.sources()==null || response.sources().isEmpty()
+             ? evidence : response.sources();
+     Set<UUID> allowed = sources.stream().map(AiResultGenerationClient.Evidence::citationId).filter(Objects::nonNull).collect(java.util.stream.Collectors.toSet());
      List<AiResultGenerationClient.Sentence> validSentences = response.sentences()==null ? List.of() : response.sentences().stream()
              .filter(Objects::nonNull)
              .filter(sentence -> sentence.citationIds()!=null && !sentence.citationIds().isEmpty())
              .filter(sentence -> allowed.containsAll(sentence.citationIds()))
              .toList();
-     return validSentences.isEmpty() ? "[]" : objectMapper.writeValueAsString(Map.of("sentences", validSentences, "sources", evidence));
+     return validSentences.isEmpty() ? "[]" : objectMapper.writeValueAsString(Map.of("sentences", validSentences, "sources", sources));
    }
    catch (Exception ignored) { return "[]"; }
  }
@@ -99,6 +105,7 @@ public class AiDetailedDocumentService {
      List<UUID> ids = new ArrayList<>();
      for (JsonNode source : sources) {
        String value = source.path("document_id").asText(null);
+       if (value == null) value = source.path("documentId").asText(null);
        if (value != null) try { ids.add(UUID.fromString(value)); } catch (IllegalArgumentException ignored) { }
      }
      return ids.stream().distinct().toList();

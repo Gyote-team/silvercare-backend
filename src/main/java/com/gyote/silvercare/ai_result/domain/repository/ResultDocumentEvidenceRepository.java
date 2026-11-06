@@ -37,7 +37,7 @@ public interface ResultDocumentEvidenceRepository extends Repository<AiResultDoc
                    "referenceRange", "sourceText"
             FROM ranked_evidence
             ORDER BY item_rank, document_created_at DESC, "documentId" DESC
-            LIMIT 40
+            LIMIT 24
             """, nativeQuery = true)
     List<EvidenceRow> findEvidence(@Param("patientId") UUID patientId, @Param("documentIds") List<UUID> documentIds);
 
