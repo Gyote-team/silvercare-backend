@@ -1,6 +1,7 @@
 package com.gyote.silvercare.ai_result.infrastructure;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.gyote.silvercare.ai_result.domain.QuestionType;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
@@ -30,13 +31,6 @@ public class AiResultGenerationClient {
                 .body(GenerationResponse.class);
     }
 
-    /** 사용자가 저장을 확정한 답변만 상세 설명 문서로 확장한다. */
-    public GenerationResponse generateDetail(GenerationRequest request) {
-        return restClient.post().uri("/internal/ai-result-documents/generate-detail")
-                .contentType(MediaType.APPLICATION_JSON).body(request).retrieve()
-                .body(GenerationResponse.class);
-    }
-
     public record GenerationRequest(
             @JsonProperty("request_id") UUID requestId,
             @JsonProperty("patient_id") UUID patientId,
@@ -59,15 +53,22 @@ public class AiResultGenerationClient {
     }
 
     public record Evidence(
+            @JsonAlias("citationId")
             @JsonProperty("citation_id") UUID citationId,
+            @JsonAlias("sourceType")
             @JsonProperty("source_type") String sourceType,
+            @JsonAlias("sourceId")
             @JsonProperty("source_id") UUID sourceId,
+            @JsonAlias("documentId")
             @JsonProperty("document_id") UUID documentId,
+            @JsonAlias("pageNo")
             @JsonProperty("page_no") Integer pageNo,
             String label,
+            @JsonAlias("sourceText")
             @JsonProperty("source_text") String sourceText,
             String value,
             String unit,
+            @JsonAlias("referenceRange")
             @JsonProperty("reference_range") String referenceRange
     ) {
     }
@@ -84,12 +85,13 @@ public class AiResultGenerationClient {
             @JsonProperty("error_code") String errorCode,
             @JsonProperty("user_message") String userMessage,
             Usage usage,
-            @JsonProperty("question_type") QuestionType questionType
+            @JsonProperty("question_type") QuestionType questionType,
+            List<Evidence> sources
     ) {
         public GenerationResponse(String resultStatus, String title, String answer, List<Sentence> sentences,
                                   boolean blocked, boolean failed, String errorCode, String userMessage) {
             this(resultStatus, title, answer, "MARKDOWN", "chat-grounded-v2", sentences,
-                    blocked, failed, errorCode, userMessage, null, null);
+                    blocked, failed, errorCode, userMessage, null, null, List.of());
         }
     }
 

@@ -80,6 +80,15 @@ public class AiChatCommandService {
             messages.save(ChatMessage.of(sessionId, ChatRole.USER, question));
             return session.getPatientId();
         });
+        if (documentIds == null || documentIds.isEmpty()) {
+            return transactions.execute(status -> {
+                messages.save(ChatMessage.answer(
+                        sessionId, "답변을 위해 문서를 선택해 주세요.", null));
+                return messages.findBySessionIdOrderByCreatedAtAsc(sessionId).stream()
+                        .map(message -> AiChatMessageView.from(message, null))
+                        .toList();
+            });
+        }
         AiResultDocumentView answer = resultDocuments.create(
                 actor, patientId, question, questionType, documentIds
         );
