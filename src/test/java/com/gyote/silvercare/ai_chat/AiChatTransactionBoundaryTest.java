@@ -78,6 +78,31 @@ class AiChatTransactionBoundaryTest {
     }
 
     @Test
+    void aiCallReceivesAllowedDocumentsWhenStructuredEvidenceIsEmpty() {
+        User actor = actor();
+        UUID patientId = UUID.randomUUID();
+        UUID documentId = UUID.randomUUID();
+        ChatSession session = sessions.save(ChatSession.open(patientId, actor.getId(), "새 채팅"));
+        when(permissions.resolveTargetPatient(actor, patientId)).thenReturn(patientId);
+        when(evidenceRetriever.retrieve(eq(patientId), any())).thenReturn(List.of());
+        when(client.generate(any())).thenAnswer(invocation -> {
+            AiResultGenerationClient.GenerationRequest request = invocation.getArgument(0);
+            assertThat(request.allowedDocumentIds()).containsExactly(documentId);
+            assertThat(request.evidence()).isEmpty();
+            return new AiResultGenerationClient.GenerationResponse(
+                    "INSUFFICIENT", null, null, "MARKDOWN", "chat-grounded-v2",
+                    List.of(), false, false, null, "근거를 찾지 못했어요.", null,
+                    QuestionType.DOCUMENT_EASY_EXPLANATION, List.of());
+        });
+
+        chats.ask(actor, session.getId(), "결과를 알려줘",
+                QuestionType.DOCUMENT_EASY_EXPLANATION, List.of(documentId));
+
+        assertThat(results.findAll()).anySatisfy(result ->
+                assertThat(result.getJobStatus()).isEqualTo(AiJobStatus.SUCCEEDED));
+    }
+
+    @Test
     void aiFailureIsSavedAfterCallWithoutTransaction() {
         User actor = actor();
         UUID patientId = UUID.randomUUID();

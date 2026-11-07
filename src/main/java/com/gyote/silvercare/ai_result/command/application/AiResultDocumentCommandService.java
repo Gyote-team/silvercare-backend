@@ -78,10 +78,6 @@ public class AiResultDocumentCommandService {
         } catch (Exception exception) {
             return fail(resultId, "문서 근거를 조회하지 못했어요.");
         }
-        if (evidence.isEmpty()) {
-            return complete(resultId, ResultStatus.INSUFFICIENT, "근거 부족",
-                    "선택한 문서에서 분석 완료된 근거를 찾지 못했어요.", "[]");
-        }
         AiResultGenerationClient client = generationClients.getIfAvailable();
         if (client == null) {
             return fail(resultId, "AI 서버 설정이 없습니다.");
