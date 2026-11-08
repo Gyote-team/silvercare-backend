@@ -74,6 +74,7 @@ public class AiChatCommandService {
     ) {
         UUID patientId = transactions.execute(status -> {
             ChatSession session = requireOwnedSession(actor, sessionId);
+            permissions.requireDocumentAccess(actor, session.getPatientId());
             if ("새 채팅".equals(session.getTitle())) {
                 session.rename(questionTitle(question));
             }

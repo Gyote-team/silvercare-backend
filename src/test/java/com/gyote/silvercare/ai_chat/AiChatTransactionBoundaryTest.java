@@ -1,6 +1,7 @@
 package com.gyote.silvercare.ai_chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -15,7 +16,9 @@ import com.gyote.silvercare.ai_result.command.application.ChatDocumentScopeValid
 import com.gyote.silvercare.ai_result.domain.QuestionType;
 import com.gyote.silvercare.ai_result.domain.repository.AiResultDocumentRepository;
 import com.gyote.silvercare.ai_result.infrastructure.AiResultGenerationClient;
+import com.gyote.silvercare.global.exception.BusinessException;
 import com.gyote.silvercare.global.status.AiJobStatus;
+import com.gyote.silvercare.medical_document.error.AiDocumentErrorCode;
 import com.gyote.silvercare.medical_document.query.application.CareRelationPermissionService;
 import com.gyote.silvercare.user.domain.User;
 
@@ -138,6 +141,40 @@ class AiChatTransactionBoundaryTest {
         assertThat(conversation.get(1).content()).isEqualTo("답변을 위해 문서를 선택해 주세요.");
         assertThat(conversation.get(1).resultDocumentId()).isNull();
         assertThat(results.findAll()).isEmpty();
+    }
+
+    @Test
+    void revokedCaregiverCannotPostWithEmptyDocumentsOrAppendMessages() {
+        User actor = actor();
+        UUID patientId = UUID.randomUUID();
+        ChatSession session = sessions.save(ChatSession.open(patientId, actor.getId(), "새 채팅"));
+        when(permissions.requireDocumentAccess(actor, patientId))
+                .thenThrow(new BusinessException(AiDocumentErrorCode.DOCUMENT_ACCESS_DENIED));
+
+        assertThatThrownBy(() -> chats.ask(actor, session.getId(), "확인",
+                QuestionType.DOCUMENT_EASY_EXPLANATION, List.of()))
+                .isInstanceOf(BusinessException.class);
+
+        assertThat(messages.findBySessionIdOrderByCreatedAtAsc(session.getId())).isEmpty();
+        assertThat(sessions.findById(session.getId())).get()
+                .extracting(ChatSession::getTitle).isEqualTo("새 채팅");
+    }
+
+    @Test
+    void revokedCaregiverCannotPostWithNullDocumentsOrAppendMessages() {
+        User actor = actor();
+        UUID patientId = UUID.randomUUID();
+        ChatSession session = sessions.save(ChatSession.open(patientId, actor.getId(), "새 채팅"));
+        when(permissions.requireDocumentAccess(actor, patientId))
+                .thenThrow(new BusinessException(AiDocumentErrorCode.DOCUMENT_ACCESS_DENIED));
+
+        assertThatThrownBy(() -> chats.ask(actor, session.getId(), "확인",
+                QuestionType.DOCUMENT_EASY_EXPLANATION, null))
+                .isInstanceOf(BusinessException.class);
+
+        assertThat(messages.findBySessionIdOrderByCreatedAtAsc(session.getId())).isEmpty();
+        assertThat(sessions.findById(session.getId())).get()
+                .extracting(ChatSession::getTitle).isEqualTo("새 채팅");
     }
 
     private User actor() {
