@@ -5,7 +5,9 @@ import org.springframework.http.HttpStatus;
 
 /** AI 채팅방 조회와 사용 권한 오류를 정의한다. */
 public enum AiChatErrorCode implements ErrorCode {
-    CHAT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "AI_CHAT_001", "채팅방에 접근할 권한이 없습니다.");
+    CHAT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "AI_CHAT_001", "채팅방에 접근할 권한이 없습니다."),
+    DOCUMENT_SCOPE_DENIED(HttpStatus.FORBIDDEN, "AI_CHAT_002", "선택한 문서에 접근할 권한이 없습니다."),
+    DOCUMENT_NOT_READY(HttpStatus.CONFLICT, "AI_CHAT_003", "분석이 완료된 문서를 선택해 주세요.");
 
     private final HttpStatus status;
     private final String code;

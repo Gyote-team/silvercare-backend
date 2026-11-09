@@ -74,12 +74,22 @@ public class AiChatCommandService {
     ) {
         UUID patientId = transactions.execute(status -> {
             ChatSession session = requireOwnedSession(actor, sessionId);
+            permissions.requireDocumentAccess(actor, session.getPatientId());
             if ("새 채팅".equals(session.getTitle())) {
                 session.rename(questionTitle(question));
             }
             messages.save(ChatMessage.of(sessionId, ChatRole.USER, question));
             return session.getPatientId();
         });
+        if (documentIds == null || documentIds.isEmpty()) {
+            return transactions.execute(status -> {
+                messages.save(ChatMessage.answer(
+                        sessionId, "답변을 위해 문서를 선택해 주세요.", null));
+                return messages.findBySessionIdOrderByCreatedAtAsc(sessionId).stream()
+                        .map(message -> AiChatMessageView.from(message, null))
+                        .toList();
+            });
+        }
         AiResultDocumentView answer = resultDocuments.create(
                 actor, patientId, question, questionType, documentIds
         );

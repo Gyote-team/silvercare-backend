@@ -35,6 +35,7 @@ public class AiResultDocumentCommandService {
     private final ObjectProvider<AiResultGenerationClient> generationClients;
     private final ObjectMapper objectMapper;
     private final AiLlmUsageEventRepository usageEvents;
+    private final ChatDocumentScopeValidator documentScopeValidator;
     private final TransactionTemplate transactions;
 
     public AiResultDocumentCommandService(
@@ -44,6 +45,7 @@ public class AiResultDocumentCommandService {
             ObjectProvider<AiResultGenerationClient> generationClients,
             ObjectMapper objectMapper,
             AiLlmUsageEventRepository usageEvents,
+            ChatDocumentScopeValidator documentScopeValidator,
             PlatformTransactionManager transactionManager
     ) {
         this.resultDocuments = resultDocuments;
@@ -52,6 +54,7 @@ public class AiResultDocumentCommandService {
         this.generationClients = generationClients;
         this.objectMapper = objectMapper;
         this.usageEvents = usageEvents;
+        this.documentScopeValidator = documentScopeValidator;
         this.transactions = new TransactionTemplate(transactionManager);
     }
 
@@ -65,6 +68,7 @@ public class AiResultDocumentCommandService {
             List<UUID> documentIds
     ) {
         UUID patientId = permissions.resolveTargetPatient(actor, requestedPatientId);
+        documentScopeValidator.validate(patientId, documentIds);
         AiResultDocument result = transactions.execute(status -> resultDocuments.save(
                 AiResultDocument.queued(patientId, actor.getId(), question, questionType)));
         UUID resultId = result.getId();
@@ -73,10 +77,6 @@ public class AiResultDocumentCommandService {
             evidence = evidenceRetriever.retrieve(patientId, documentIds);
         } catch (Exception exception) {
             return fail(resultId, "문서 근거를 조회하지 못했어요.");
-        }
-        if (evidence.isEmpty()) {
-            return complete(resultId, ResultStatus.INSUFFICIENT, "근거 부족",
-                    "선택한 문서에서 분석 완료된 근거를 찾지 못했어요.", "[]");
         }
         AiResultGenerationClient client = generationClients.getIfAvailable();
         if (client == null) {
@@ -88,7 +88,8 @@ public class AiResultDocumentCommandService {
         try {
             generated = client.generate(
                     new AiResultGenerationClient.GenerationRequest(
-                            result.getRequestId(), patientId, actor.getId(), question, questionType, evidence
+                            result.getRequestId(), patientId, actor.getId(), question, questionType,
+                            documentIds, List.of(), evidence
                     )
             );
         } catch (ResourceAccessException exception) {
@@ -165,12 +166,16 @@ public class AiResultDocumentCommandService {
             List<AiResultGenerationClient.Evidence> evidence
     ) {
         try {
+            List<AiResultGenerationClient.Evidence> sources =
+                    response.sources() == null || response.sources().isEmpty()
+                            ? evidence : response.sources();
             return objectMapper.writeValueAsString(Map.of(
                     "sentences", response.sentences(),
-                    "sources", evidence
+                    "sources", sources
             ));
         } catch (JsonProcessingException exception) {
             return "[]";
         }
     }
+
 }
