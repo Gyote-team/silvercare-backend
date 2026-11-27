@@ -87,7 +87,7 @@ public class ActionItemCommandService {
 
     /** 대기 후보를 거절하며 일정은 만들지 않는다. */
     public void reject(User actor, UUID id) {
-        require(actor, id).item().reject();
+        require(actor, id).item().reject(actor.getId());
         items.flush();
     }
 

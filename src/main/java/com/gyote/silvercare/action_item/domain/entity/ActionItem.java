@@ -72,16 +72,23 @@ public class ActionItem {
 
     /** 대기 후보만 승인하고 실제 승인자와 시각을 기록한다. */
     public void approve(UUID actorId) {
-        requirePending();
-        approvalStatus = ActionItemApprovalStatus.APPROVED;
-        approvedByUserId = actorId;
-        approvedAt = Instant.now();
+        decide(ActionItemApprovalStatus.APPROVED, actorId);
     }
 
-    /** 대기 후보만 거절하고 일정은 생성하지 않는다. */
-    public void reject() {
+    /** 대기 후보를 거절하고 공통 처리자·처리 시각 필드에 거절 이력을 기록한다. */
+    public void reject(UUID actorId) {
+        decide(ActionItemApprovalStatus.REJECTED, actorId);
+    }
+
+    private void decide(ActionItemApprovalStatus status, UUID actorId) {
         requirePending();
-        approvalStatus = ActionItemApprovalStatus.REJECTED;
+        if (actorId == null)
+            throw new BusinessException(
+                    com.gyote.silvercare.global.exception.GlobalErrorCode.INVALID_REQUEST);
+        approvalStatus = status;
+        // 기존 협업 계약의 필드명은 승인·거절 모두 동일하게 사용한다.
+        approvedByUserId = actorId;
+        approvedAt = Instant.now();
     }
 
     /** 승인·거절·원본 삭제로 종료된 후보는 다시 처리할 수 없다. */

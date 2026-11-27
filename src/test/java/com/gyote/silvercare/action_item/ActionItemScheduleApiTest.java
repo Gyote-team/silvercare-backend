@@ -64,6 +64,7 @@ class ActionItemScheduleApiTest {
     @Autowired ActionItemCommandService commands;
     @Autowired JdbcTemplate db;
     @Autowired com.gyote.silvercare.schedule.domain.repository.ScheduleRepository schedules;
+    @Autowired com.gyote.silvercare.action_item.domain.repository.ActionItemRepository items;
     User personal, caregiver, other;
     UUID patient, candidate;
     MedicalDocument document;
@@ -147,7 +148,12 @@ class ActionItemScheduleApiTest {
     void rejectionIsTerminalAndCreatesNoSchedule() throws Exception {
         call(personal, post("/api/action-items/" + candidate + "/reject"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.approvalStatus").value("REJECTED"));
+                .andExpect(jsonPath("$.approvalStatus").value("REJECTED"))
+                .andExpect(jsonPath("$.approvedByUserId").value(personal.getId().toString()))
+                .andExpect(jsonPath("$.approvedAt").isNotEmpty());
+        var decided = items.findById(candidate).orElseThrow();
+        assertThat(decided.getApprovedByUserId()).isEqualTo(personal.getId());
+        assertThat(decided.getApprovedAt()).isNotNull();
         call(
                         personal,
                         post("/api/action-items/" + candidate + "/approve")
@@ -155,6 +161,16 @@ class ActionItemScheduleApiTest {
                                 .content(approval()))
                 .andExpect(status().isConflict());
         assertThat(scheduleCount()).isZero();
+    }
+
+    @Test
+    void decisionWithoutActorIsRejectedBeforeChangingState() {
+        var item = items.findById(candidate).orElseThrow();
+        assertThatThrownBy(() -> item.approve(null)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> item.reject(null)).isInstanceOf(BusinessException.class);
+        assertThat(item.getApprovalStatus().name()).isEqualTo("PENDING");
+        assertThat(item.getApprovedByUserId()).isNull();
+        assertThat(item.getApprovedAt()).isNull();
     }
 
     @Test
