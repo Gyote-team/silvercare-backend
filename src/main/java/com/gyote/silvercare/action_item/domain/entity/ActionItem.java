@@ -2,6 +2,8 @@ package com.gyote.silvercare.action_item.domain.entity;
 
 import com.gyote.silvercare.action_item.domain.ActionItemApprovalStatus;
 import com.gyote.silvercare.action_item.domain.ActionItemType;
+import com.gyote.silvercare.action_item.error.ActionItemErrorCode;
+import com.gyote.silvercare.global.exception.BusinessException;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -67,4 +69,24 @@ public class ActionItem {
 
     @Column(precision = 5, scale = 4)
     private BigDecimal confidence;
+
+    /** 대기 후보만 승인하고 실제 승인자와 시각을 기록한다. */
+    public void approve(UUID actorId) {
+        requirePending();
+        approvalStatus = ActionItemApprovalStatus.APPROVED;
+        approvedByUserId = actorId;
+        approvedAt = Instant.now();
+    }
+
+    /** 대기 후보만 거절하고 일정은 생성하지 않는다. */
+    public void reject() {
+        requirePending();
+        approvalStatus = ActionItemApprovalStatus.REJECTED;
+    }
+
+    /** 승인·거절·원본 삭제로 종료된 후보는 다시 처리할 수 없다. */
+    public void requirePending() {
+        if (approvalStatus != ActionItemApprovalStatus.PENDING)
+            throw new BusinessException(ActionItemErrorCode.STATE_CONFLICT);
+    }
 }

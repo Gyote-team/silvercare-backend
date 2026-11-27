@@ -16,8 +16,8 @@ src/main/java/com/gyote/silvercare/
 ├─ ai_result/                        # 문서 근거 기반 AI 답변 생성·결과 조회
 ├─ previsit_summary/                 # 최근 건강기록 선정·비동기 진료 전 요약·근거 조회
 ├─ ai_chat/                          # 대상별 AI 채팅방·메시지
-├─ action_item/                      # 할 일 후보 승인·거절 (구조 준비)
-├─ schedule/                         # 일정·복약 알림 (구조 준비)
+├─ action_item/                      # 후보 조회·근거·승인·거절 및 일정 생성
+├─ schedule/                         # 일정 CRUD·복약 반복 규칙 (알림 발송은 후속 기능)
 ├─ timeline/                         # 통합 타임라인 조회 (구조 준비)
 └─ voice_recording/                  # 음성 업로드·STT 작업·초안 확정·진료실 녹음
 ```

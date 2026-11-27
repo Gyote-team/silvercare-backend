@@ -22,6 +22,11 @@ import java.util.UUID;
  */
 public interface MedicalDocumentRepository extends JpaRepository<MedicalDocument, UUID> {
 
+    /** 삭제와 후보 승인이 같은 순서로 문서 행을 잠그도록 한다. */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select d from MedicalDocument d where d.id=:id")
+    Optional<MedicalDocument> findLockedById(@Param("id") UUID id);
+
     Optional<MedicalDocument> findByIdAndStatusNot(UUID id, DocumentStatus excluded);
 
     /** 업로드한 사용자와 Idempotency-Key가 같은 문서를 찾아 반환합니다. 삭제된 문서도 포함합니다. */
