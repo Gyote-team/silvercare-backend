@@ -34,7 +34,7 @@ public class MedicalDocumentCommandService {
 
     @Transactional
     public void delete(User me, UUID documentId) {
-        MedicalDocument document = documents.findById(documentId)
+        MedicalDocument document = documents.findLockedById(documentId)
                 .orElseThrow(() -> new BusinessException(MedicalDocumentErrorCode.DOCUMENT_NOT_FOUND));
         if (!accessPolicy.canDelete(me, document)) {
             throw new BusinessException(MedicalDocumentErrorCode.DOCUMENT_NOT_FOUND);
